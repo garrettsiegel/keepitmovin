@@ -35,7 +35,7 @@ export interface InteractiveProviderConfig {
   controllable?: boolean;
   fallbackOn?: AgentErrorType[];
   // Exact, tool-emitted rate/usage-limit banners for this provider. Trusted on a
-  // direct match during live detection (see harness.ts:detectLiveFailure).
+  // direct match during live detection (see failure-detection.ts:detectLiveFailure).
   limitPatterns?: string[];
 }
 

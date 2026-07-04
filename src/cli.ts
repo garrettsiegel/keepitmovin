@@ -1,110 +1,19 @@
 #!/usr/bin/env node
-import chalk from "chalk";
 import { Command } from "commander";
-import { cancel, confirm, isCancel, select } from "@clack/prompts";
-import ora from "ora";
-import { initConfig, loadConfig } from "./config.js";
-import { runDoctor } from "./doctor.js";
-import { clearHandoffArtifacts, summarizeHandoffFile } from "./handoff-file.js";
-import { runHarness } from "./harness.js";
-import { describeProviderChain, getEnabledInteractiveProviders } from "./interactive-provider.js";
-import { readLatestSessionLog } from "./session-log.js";
-import { getSetupState, runSetupWizard } from "./setup.js";
-import { renderHarnessStart } from "./terminal-ui.js";
-import { ensureProviderFreshness } from "./updates.js";
-import type { CodePassConfig } from "./types.js";
-
-interface CliOptions {
-  all?: boolean;
-  config?: string;
-  cwd?: string;
-  dryRun?: boolean;
-  maxRetries?: string;
-  printPrompt?: boolean;
-  provider?: string;
-}
-
-const resolveCommandOptions = (
-  rawOptions: CliOptions | Command,
-  command?: Command
-): CliOptions => {
-  const commandCandidate = command ?? (rawOptions instanceof Command ? rawOptions : undefined);
-  const parsedOptions = commandCandidate?.opts<CliOptions>() ?? rawOptions as CliOptions;
-
-  return {
-    ...parsedOptions,
-    config: readOptionFromArgv(["--config", "-c"]) ?? parsedOptions.config,
-    cwd: readOptionFromArgv(["--cwd"]) ?? parsedOptions.cwd
-  };
-};
-
-const readOptionFromArgv = (names: string[]): string | undefined => {
-  for (const [index, arg] of process.argv.entries()) {
-    for (const name of names) {
-      if (arg === name) {
-        return process.argv[index + 1];
-      }
-
-      if (arg.startsWith(`${name}=`)) {
-        return arg.slice(name.length + 1);
-      }
-    }
-  }
-
-  return undefined;
-};
+import { runClearCommand } from "./commands/clear.js";
+import { runDoctorCommand } from "./commands/doctor.js";
+import { runHandoffCommand } from "./commands/handoff.js";
+import { runInitCommand } from "./commands/init.js";
+import { runLaunchCommand } from "./commands/launch.js";
+import { runProvidersCommand } from "./commands/providers.js";
+import { runSessionCommand } from "./commands/session.js";
+import { runSetupCommand } from "./commands/setup.js";
+import { resolveCommandOptions, type CliOptions } from "./cli-options.js";
 
 // Support `codepass -- <args>` by stripping the `--` separator; the bare
 // `codepass` invocation launches the interactive harness (default action).
 const normalizeArgv = (argv: string[]): string[] =>
   argv[2] === "--" ? [argv[0] ?? "node", argv[1] ?? "codepass", ...argv.slice(3)] : argv;
-
-// On `codepass`, decide which config to launch with. First run → wizard. Otherwise
-// confirm the saved chain (reuse / reconfigure / start fresh). Non-interactive
-// stdin reuses saved preferences without prompting.
-const resolveLaunchConfig = async (
-  loadedConfig: CodePassConfig,
-  cwd: string,
-  configPath?: string
-): Promise<CodePassConfig> => {
-  if (!loadedConfig.harness.setupComplete) {
-    return (await runSetupWizard({ cwd, configPath })).config;
-  }
-
-  if (!process.stdin.isTTY) {
-    return loadedConfig;
-  }
-
-  const enabled = getEnabledInteractiveProviders(loadedConfig);
-  const chain = enabled.length > 0 ? describeProviderChain(enabled) : "(no enabled tools)";
-  console.log(`${chalk.bold("Saved chain:")} ${chain}`);
-
-  const choice = await select({
-    message: "Start with this chain?",
-    options: [
-      { label: "Yes, launch", value: "launch" },
-      { label: "Reconfigure (choose tools/order)", value: "reconfigure" },
-      { label: "Start fresh (ignore saved preferences)", value: "fresh" }
-    ],
-    initialValue: "launch"
-  });
-
-  if (isCancel(choice)) {
-    cancel("CodePass canceled.");
-    throw new Error("CodePass canceled.");
-  }
-
-  if (choice === "launch") {
-    return loadedConfig;
-  }
-
-  return (await runSetupWizard({
-    cwd,
-    configPath,
-    force: true,
-    reset: choice === "fresh"
-  })).config;
-};
 
 const program = new Command();
 
@@ -117,61 +26,7 @@ program
   .option("-c, --config <path>", "Config file path")
   .option("--cwd <path>", "Working directory", process.cwd())
   .action(async (options: CliOptions) => {
-    const cwd = options.cwd ?? process.cwd();
-
-    try {
-      const loaded = await loadConfig(cwd, options.config);
-      const config = await resolveLaunchConfig(loaded.config, cwd, options.config);
-      const providers = getEnabledInteractiveProviders(config);
-      const setupState = await getSetupState(cwd, options.config);
-      const availabilityByName = new Map(
-        setupState.toolStatuses.map((status) => [status.name, status.available])
-      );
-      const providersAvailableOnPath = providers.filter((provider) =>
-        availabilityByName.get(provider.name) ?? false
-      );
-      const missingSelectedProviders = providers.filter((provider) =>
-        !availabilityByName.get(provider.name)
-      );
-
-      for (const provider of missingSelectedProviders) {
-        console.log(chalk.yellow(`${provider.label} is not installed or not on PATH. CodePass will skip it for this session.`));
-      }
-
-      if (providersAvailableOnPath.length === 0) {
-        throw new Error("CodePass did not find any launchable tools in your selected stack. Run `codepass providers` to choose installed tools.");
-      }
-
-      const freshness = await ensureProviderFreshness({
-        cwd,
-        config,
-        providers: providersAvailableOnPath,
-        interactive: true
-      });
-      const missingProviders = new Set(
-        freshness
-          .filter((result) => result.action === "missing")
-          .map((result) => result.provider)
-      );
-      const launchableProviders = providersAvailableOnPath.filter((provider) => !missingProviders.has(provider.name));
-
-      if (launchableProviders.length === 0) {
-        throw new Error("CodePass did not find any launchable tools in your selected stack. Run `codepass providers` to choose installed tools.");
-      }
-
-      console.log(renderHarnessStart(launchableProviders));
-
-      await runHarness({
-        cwd,
-        config,
-        providers: launchableProviders,
-        input: process.stdin,
-        output: process.stdout
-      });
-    } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
+    await runLaunchCommand(options);
   });
 
 program
@@ -180,17 +35,7 @@ program
   .option("-c, --config <path>", "Config file path")
   .option("--cwd <path>", "Working directory", process.cwd())
   .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    const options = resolveCommandOptions(rawOptions, command);
-
-    try {
-      const result = await initConfig(options.cwd ?? process.cwd(), options.config);
-      const status = result.createdConfig ? "created" : "already exists";
-      console.log(chalk.green(`CodePass config ${status}: ${result.configPath}`));
-      console.log(chalk.gray("Created .codepass/runs and .codepass/logs if needed."));
-    } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
+    await runInitCommand(resolveCommandOptions(rawOptions, command));
   });
 
 program
@@ -200,71 +45,7 @@ program
   .option("--cwd <path>", "Working directory", process.cwd())
   .option("--all", "Show the full popular provider catalog")
   .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    const options = resolveCommandOptions(rawOptions, command);
-    const spinner = ora("Checking CodePass setup...").start();
-
-    try {
-      const summary = await runDoctor(options.cwd ?? process.cwd(), options.config, {
-        includeAllCatalog: options.all ?? false
-      });
-      spinner.succeed("CodePass setup check complete.");
-
-      console.log("");
-      console.log(chalk.bold("Working directory:"), summary.cwd);
-      console.log(
-        chalk.bold("Config:"),
-        summary.usingDefaultConfig
-          ? `${summary.configPath} ${chalk.gray("(not found; using built-in defaults)")}`
-          : summary.configPath
-      );
-      console.log(chalk.bold("Git repo:"), summary.gitRepo ? "yes" : "no");
-      console.log(chalk.bold("Changed files:"), summary.changedFiles.length);
-      console.log(chalk.bold("Runs dir:"), summary.runsDir);
-      console.log(chalk.bold("Logs dir:"), summary.logsDir);
-      console.log(chalk.bold("Sessions dir:"), summary.sessionsDir);
-
-      console.log("");
-      console.log(chalk.bold("Harness providers:"));
-      for (const provider of summary.interactiveProviderHealth) {
-        const enabled = provider.enabled ? "enabled" : "disabled";
-        const status = provider.available ? chalk.green("ready") : chalk.blue("add later");
-        console.log(
-          `- ${provider.label ?? provider.name}: ${enabled}, ${status} (${provider.command}) - ${provider.detail}`
-        );
-      }
-
-      if (summary.catalogProviderHealth.length > 0) {
-        console.log("");
-        console.log(chalk.bold("Popular provider catalog:"));
-        for (const provider of summary.catalogProviderHealth) {
-          const integration = provider.group === "guided" || provider.controllable === false
-            ? chalk.blue(provider.integrationType ?? "guided")
-            : provider.available
-              ? chalk.green("ready")
-              : chalk.blue("add later");
-          const configured = provider.configured ? chalk.gray("configured") : chalk.gray("not configured");
-          console.log(
-            `- ${provider.label ?? provider.name}: ${integration}, ${configured} (${provider.command}) - ${provider.detail}`
-          );
-          if (provider.limitation) {
-            console.log(chalk.gray(`  ${provider.limitation}`));
-          }
-        }
-      }
-
-      console.log("");
-      if (summary.readyInteractiveProviderCount > 0) {
-        console.log(chalk.green(`Ready harness providers: ${summary.readyInteractiveProviderCount}`));
-        console.log(chalk.gray("Next: run `codepass` to start the harness."));
-      } else {
-        console.log(chalk.red("No enabled harness providers are available on PATH."));
-        process.exitCode = 1;
-      }
-    } catch (error) {
-      spinner.fail("CodePass setup check failed.");
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
+    await runDoctorCommand(resolveCommandOptions(rawOptions, command));
   });
 
 program
@@ -273,22 +54,7 @@ program
   .option("-c, --config <path>", "Config file path")
   .option("--cwd <path>", "Working directory", process.cwd())
   .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    const options = resolveCommandOptions(rawOptions, command);
-
-    try {
-      const cwd = options.cwd ?? process.cwd();
-      const { config } = await loadConfig(cwd, options.config);
-      const handoff = await summarizeHandoffFile(cwd, config);
-
-      console.log(chalk.bold("CodePass handoff file"));
-      console.log("Path:", handoff.path);
-      console.log("Status:", handoff.exists ? chalk.green("exists") : chalk.yellow("not created yet"));
-      console.log("");
-      console.log(handoff.summary);
-    } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
+    await runHandoffCommand(resolveCommandOptions(rawOptions, command));
   });
 
 program
@@ -299,31 +65,7 @@ program
   .option("--yes", "Skip confirmation")
   .action(async (rawOptions: (CliOptions & { yes?: boolean }) | Command, command?: Command) => {
     const options = resolveCommandOptions(rawOptions, command) as CliOptions & { yes?: boolean };
-
-    try {
-      const cwd = options.cwd ?? process.cwd();
-      const { config } = await loadConfig(cwd, options.config);
-      const confirmation = options.yes ?? await confirm({
-        message: "Delete local CodePass handoffs and harness session logs?",
-        initialValue: false
-      });
-      const shouldClear = !isCancel(confirmation) && confirmation;
-
-      if (!shouldClear) {
-        console.log("CodePass clear cancelled.");
-        return;
-      }
-
-      const removed = await clearHandoffArtifacts(cwd, config);
-      console.log(
-        removed.length > 0
-          ? chalk.green(`Cleared ${removed.length} CodePass artifact location(s).`)
-          : chalk.gray("No CodePass handoff/session artifacts found.")
-      );
-    } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
+    await runClearCommand(options);
   });
 
 program
@@ -332,18 +74,7 @@ program
   .option("-c, --config <path>", "Config file path")
   .option("--cwd <path>", "Working directory", process.cwd())
   .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    const options = resolveCommandOptions(rawOptions, command);
-
-    try {
-      await runSetupWizard({
-        cwd: options.cwd ?? process.cwd(),
-        configPath: options.config,
-        force: true
-      });
-    } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
+    await runSetupCommand(resolveCommandOptions(rawOptions, command));
   });
 
 program
@@ -353,19 +84,7 @@ program
   .option("--cwd <path>", "Working directory", process.cwd())
   .option("--all", "Browse the full popular provider catalog while editing")
   .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    const options = resolveCommandOptions(rawOptions, command);
-
-    try {
-      await runSetupWizard({
-        cwd: options.cwd ?? process.cwd(),
-        configPath: options.config,
-        force: true,
-        showAllCatalog: options.all ?? false
-      });
-    } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
+    await runProvidersCommand(resolveCommandOptions(rawOptions, command));
   });
 
 program
@@ -374,29 +93,7 @@ program
   .option("-c, --config <path>", "Config file path")
   .option("--cwd <path>", "Working directory", process.cwd())
   .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    const options = resolveCommandOptions(rawOptions, command);
-
-    try {
-      const cwd = options.cwd ?? process.cwd();
-      const { config } = await loadConfig(cwd, options.config);
-      const latest = await readLatestSessionLog(cwd, config);
-
-      if (!latest) {
-        console.log(chalk.yellow("No CodePass harness sessions found yet."));
-        return;
-      }
-
-      console.log(chalk.bold("Latest CodePass session"));
-      console.log("Started:", latest.startedAt);
-      console.log("Ended:", latest.endedAt);
-      console.log("Providers:", latest.providerOrder.join(" -> "));
-      console.log("Attempts:", latest.attempts.length);
-      console.log("Changed files:", latest.changedFiles.length);
-      console.log("Log:", latest.sessionLogPath ?? "(unknown)");
-    } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
+    await runSessionCommand(resolveCommandOptions(rawOptions, command));
   });
 
 await program.parseAsync(normalizeArgv(process.argv));

@@ -58,8 +58,9 @@ Supporting modules:
 
 ## Gotchas
 
-- **Harness failure detection scans live provider output.** `detectFallbackError` in `harness.ts`
-  classifies the transcript while the tool streams. Broad substring patterns can false-positive on an
+- **Harness failure detection scans live provider output.** `detectLiveFailure` in
+  `failure-detection.ts` classifies the transcript while the tool streams (called from the PTY
+  loop in `harness-session.ts`). Broad substring patterns can false-positive on an
   agent that merely *discusses* a rate limit. Detection has two layers: the generic families in
   `errors.ts` (`matchLimitPattern`), trusted only on a *status-like line* (prose guard), and a
   provider's curated `limitPatterns` in `provider-catalog.ts` (`matchProviderLimitPattern`), which are

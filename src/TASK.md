@@ -171,19 +171,62 @@ no logic changes.
 Pure extraction — **zero behavior change, tests pass unchanged** (only import paths in tests may
 move). Do this after T1–T5 so you split the final shapes of these files.
 
-- [ ] **(Opus)** `src/harness.ts` (~590): extract failure-detection (`detectFallbackError` + pattern
-      scoping + `MANUAL_SWITCH_SEQUENCES`) into `src/failure-detection.ts`, and PTY session
-      spawn/wiring into `src/harness-session.ts`. `harness.ts` keeps the orchestration loop.
-- [ ] **(Sonnet)** `src/cli.ts` (~450 after T1): move each command's action body into
-      `src/commands/<name>.ts` (init, doctor, handoff, clear, setup, providers, session);
-      `cli.ts` keeps only commander wiring + shared option parsing.
-- [ ] **(Sonnet)** `src/setup.ts` (~400): extract the auth/login step and the version-check step into
-      focused modules (e.g. `src/setup-auth.ts`, `src/setup-updates.ts`).
-- [ ] **(Sonnet)** Re-check `src/provider-catalog.ts`, `src/doctor.ts`, `src/updates.ts` after
-      T1/T2 — split only those still > 250 LOC.
-- [ ] Keep `src/index.ts` exports intentional — do not re-export new internal modules unless needed.
-- [ ] Verify: `wc -l src/*.ts src/**/*.ts` shows every file ≤ 250 (flag any justified exception in
-      the PR/summary); build/test/lint pass; quick manual harness run still works.
+- [x] **(Opus)** `src/harness.ts` (600 → 150 LOC): split into three modules, zero behavior change.
+      Failure-detection (`detectLiveFailure`/`detectExitFailure`, `isStatusLikeLine`, `stripIgnored`,
+      `ERROR_LINE_INDICATORS`/`STATUS_WORDS`, `getManualSwitchSequence`) → `src/failure-detection.ts`
+      (144 LOC). PTY session spawn/wiring (`waitForProvider` + its idle-timer/cleanup/input plumbing)
+      → `src/harness-session.ts` (200 LOC). The PTY adapter + factories (`ChildProcessPtyAdapter`,
+      `defaultPtyFactory`, node-pty/pipe fallback) → `src/pty-factory.ts` (116 LOC) — a natural third
+      seam since both `harness.ts` and `harness-session.ts` need the `PtyFactory`/`PtyProcess` types.
+      `harness.ts` keeps `runHarness` (the orchestration loop) and **re-exports
+      `PtyFactory`/`PtyFactoryOptions`/`PtyProcess`** so `test/harness.test.ts`'s
+      `import { runHarness, type PtyFactory, type PtyProcess } from "../src/harness.js"` is unchanged.
+      Verified: build/lint pass, all 57 tests pass unchanged, and a real end-to-end `runHarness` run
+      (provider `limitPatterns` banner → detect → kill → commercial break → switch to Codex) behaves
+      identically across the three new modules. Also fixed stale `harness.ts:detectLiveFailure`
+      references in `types.ts`, `provider-catalog-data.ts`, and the CLAUDE.md detection gotcha (the
+      function moved to `failure-detection.ts`; the gotcha also had a pre-existing wrong name,
+      `detectFallbackError`).
+- [x] **(Sonnet)** `src/cli.ts` (402 → 99 LOC): moved each command's action body into
+      `src/commands/<name>.ts` (launch, init, doctor, handoff, clear, setup, providers, session) —
+      `launch.ts` also carries `resolveLaunchConfig` since it's launch-specific. Shared option
+      parsing (`CliOptions`, `resolveCommandOptions`, `readOptionFromArgv`) moved to a new
+      `src/cli-options.ts` (not `cli.ts` itself, to avoid command modules importing back from the
+      executable entrypoint). `cli.ts` now only wires commander commands to their handlers.
+- [x] **(Sonnet)** `src/setup.ts` (403 → 143 LOC): the actual code didn't have a distinct "auth/login"
+      step (auth is documentation-only in the catalog, not executed here), so split along the real
+      seams instead — tool-availability detection (`checkCommand`, `getSetupState`, `ToolStatus`) into
+      `src/tool-status.ts` (169 LOC), and clack prompt-building helpers (`chooseProviderOrder`,
+      `buildStackOptions`, `renderCatalogPreview`, `unwrapPrompt`) into `src/setup-prompts.ts`
+      (89 LOC). `setup.ts` keeps `runSetupWizard`/`applyProviderOrder` and re-exports
+      `getSetupState`/`ToolStatus` for API stability.
+- [x] **(Sonnet)** Re-checked after T1/T2 — three files were still over 250:
+      - `src/provider-catalog.ts` (309 → 108 LOC): moved the `PROVIDER_CATALOG` data array + its
+        type defs into `src/provider-catalog-data.ts` (211 LOC, mostly data); `provider-catalog.ts`
+        keeps the functions (`getCatalogEntry`, `mergeCatalogInteractiveProviders`, etc.) and
+        re-exports the data/types.
+      - `src/updates.ts` (273 → 129 LOC): moved the runner primitives (`defaultRunner`,
+        `checkProviderCommand`, `getProvidersForFreshness`, `runMaintenanceCommand`,
+        `shouldRunCommand`) into `src/update-runner.ts` (162 LOC); `updates.ts` keeps the
+        `ensureProviderFreshness` orchestration + spinner UI and re-exports the runner's types
+        (confirmed via `test/updates.test.ts`, which imports `UpdateCommandRunner` from
+        `updates.js`).
+      - `src/doctor.ts` (265 → 94 LOC): moved the health-check primitives (`checkProviderCommand`,
+        `catalogHealthInput`, `interactiveHealthInput`, `ProviderHealth`) into
+        `src/provider-health.ts` (173 LOC); `doctor.ts` keeps `runDoctor`'s orchestration.
+      - Note: `provider-health.ts`'s `checkProviderCommand` and `update-runner.ts`'s
+        `checkProviderCommand` are two independently-typed, near-duplicate implementations of the
+        same "run `--version`, classify availability" logic. Not consolidated here — that's a reuse
+        cleanup with real behavioral surface (return-type shapes differ), not a pure LOC move, so
+        it's out of scope for this zero-behavior-change task. Worth flagging for a future pass.
+- [x] Kept `src/index.ts` exports as-is — none of the new internal modules needed new public exports;
+      all splits kept the same external re-export surface (`runDoctor`, `ensureProviderFreshness`,
+      `getSetupState`/`applyProviderOrder`/`runSetupWizard`, `PROVIDER_CATALOG` + friends).
+- [x] Verify (Sonnet portion): `wc -l` confirms every file is ≤250 LOC except `harness.ts` (Opus's
+      remaining task); build/lint pass; all 57 tests pass unchanged; manually smoke-tested every CLI
+      command (`init`, `doctor`, `handoff`, `session`, `clear --yes`) end-to-end post-split — all
+      produced identical output to pre-split behavior. Also re-ran the setup wizard directly
+      (`runSetupWizard`) to confirm the `tool-status.ts`/`setup-prompts.ts` split renders correctly.
 
 ## T7 — npm publish prep · **Sonnet**
 
