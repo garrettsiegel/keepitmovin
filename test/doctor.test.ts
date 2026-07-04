@@ -15,20 +15,26 @@ describe("runDoctor", () => {
   it("reports provider availability and default paths", async () => {
     const cwd = await makeTempDir();
     const config = defaultConfig();
-    config.providers = [
+    // Non-catalog names survive normalization (catalog names get their command
+    // overridden), so we can inject deterministic available/missing providers.
+    config.harness.providers = [
       {
-        name: "node",
+        name: "node-test",
+        label: "Node",
         enabled: true,
         command: process.execPath,
-        args: ["-e", "process.exit(0)"],
-        timeoutMs: 1_000
+        args: [],
+        handoffArgs: [],
+        integrationType: "pty"
       },
       {
-        name: "missing",
+        name: "missing-test",
+        label: "Missing",
         enabled: true,
         command: "codepass-command-that-should-not-exist",
         args: [],
-        timeoutMs: 1_000
+        handoffArgs: [],
+        integrationType: "pty"
       }
     ];
     await writeFile(
@@ -40,11 +46,11 @@ describe("runDoctor", () => {
     const summary = await runDoctor(cwd);
 
     expect(summary.usingDefaultConfig).toBe(false);
-    expect(summary.readyProviderCount).toBe(1);
-    expect(summary.providerHealth).toEqual(
+    expect(summary.readyInteractiveProviderCount).toBeGreaterThanOrEqual(1);
+    expect(summary.interactiveProviderHealth).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: "node", available: true }),
-        expect.objectContaining({ name: "missing", available: false })
+        expect.objectContaining({ name: "node-test", available: true }),
+        expect.objectContaining({ name: "missing-test", available: false })
       ])
     );
     expect(summary.runsDir).toBe(path.join(cwd, ".codepass", "runs"));

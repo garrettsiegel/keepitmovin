@@ -9,7 +9,6 @@ import {
 } from "./provider-catalog.js";
 import type {
   InteractiveProviderConfig,
-  ProviderConfig,
   ProviderIntegrationType,
   CodePassConfig
 } from "./types.js";
@@ -40,10 +39,8 @@ export interface DoctorSummary {
   runsDir: string;
   logsDir: string;
   sessionsDir: string;
-  providerHealth: ProviderHealth[];
   interactiveProviderHealth: ProviderHealth[];
   catalogProviderHealth: ProviderHealth[];
-  readyProviderCount: number;
   readyInteractiveProviderCount: number;
 }
 
@@ -235,9 +232,6 @@ export const runDoctor = async (
   const configuredInteractiveNames = new Set(
     loaded.config.harness.providers.map((provider) => provider.name)
   );
-  const providerHealth = await Promise.all(
-    loaded.config.providers.map((provider) => checkProviderCommand(provider))
-  );
   const interactiveProviderHealth = await Promise.all(
     loaded.config.harness.providers.map((provider) => checkProviderCommand(interactiveHealthInput(provider)))
   );
@@ -262,12 +256,8 @@ export const runDoctor = async (
     runsDir: dirs.runsDir,
     logsDir: dirs.logsDir,
     sessionsDir: dirs.sessionsDir,
-    providerHealth,
     interactiveProviderHealth,
     catalogProviderHealth,
-    readyProviderCount: providerHealth.filter(
-      (provider) => provider.enabled && provider.available
-    ).length,
     readyInteractiveProviderCount: controllableInteractiveProviderHealth.filter(
       (provider) => provider.enabled && provider.available
     ).length

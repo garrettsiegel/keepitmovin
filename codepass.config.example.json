@@ -1,43 +1,4 @@
 {
-  "providers": [
-    {
-      "name": "claude",
-      "enabled": true,
-      "command": "claude",
-      "args": ["-p", "--permission-mode", "acceptEdits", "{{prompt}}"],
-      "timeoutMs": 900000
-    },
-    {
-      "name": "codex",
-      "enabled": true,
-      "command": "codex",
-      "args": [
-        "exec",
-        "--sandbox",
-        "workspace-write",
-        "--ask-for-approval",
-        "never",
-        "--color",
-        "never",
-        "{{prompt}}"
-      ],
-      "timeoutMs": 900000
-    },
-    {
-      "name": "cline",
-      "enabled": false,
-      "command": "cline",
-      "args": ["--json", "--yolo", "--cwd", "{{cwd}}", "{{prompt}}"],
-      "timeoutMs": 900000
-    },
-    {
-      "name": "opencode",
-      "enabled": true,
-      "command": "opencode",
-      "args": ["run", "{{prompt}}"],
-      "timeoutMs": 900000
-    }
-  ],
   "fallbackOn": [
     "rate_limit",
     "quota_exceeded",
@@ -46,24 +7,13 @@
     "command_not_found",
     "nonzero_exit"
   ],
-  "maxRetries": 0,
-  "git": {
-    "requireCleanWorkingTree": false,
-    "createCheckpointCommit": false,
-    "showDiffAfterRun": true
-  },
   "context": {
-    "includeGitStatus": true,
-    "includeRecentDiff": true,
-    "includeProjectInstructions": true,
-    "maxDiffChars": 20000,
-    "instructionFiles": ["AGENTS.md", "CLAUDE.md", ".cursorrules", ".clinerules"]
+    "maxDiffChars": 20000
   },
   "logs": {
     "runsDir": ".codepass/runs",
     "logsDir": ".codepass/logs",
-    "sessionsDir": ".codepass/sessions",
-    "fullProviderOutput": true
+    "sessionsDir": ".codepass/sessions"
   },
   "updates": {
     "checkOnStart": true,
@@ -129,54 +79,6 @@
         "args": ["{{cwd}}", "--prompt", "{{sessionPrompt}}"],
         "handoffArgs": ["{{cwd}}", "--prompt", "{{handoffPrompt}}"],
         "integrationType": "pty",
-        "controllable": true
-      },
-      {
-        "name": "aider",
-        "label": "Aider",
-        "enabled": false,
-        "command": "aider",
-        "args": [],
-        "handoffArgs": [],
-        "integrationType": "pty_with_bootstrap_input",
-        "bootstrapInput": "{{sessionPrompt}}\n",
-        "handoffBootstrapInput": "{{handoffPrompt}}\n",
-        "controllable": true
-      },
-      {
-        "name": "goose",
-        "label": "Goose",
-        "enabled": false,
-        "command": "goose",
-        "args": [],
-        "handoffArgs": [],
-        "integrationType": "pty_with_bootstrap_input",
-        "bootstrapInput": "{{sessionPrompt}}\n",
-        "handoffBootstrapInput": "{{handoffPrompt}}\n",
-        "controllable": true
-      },
-      {
-        "name": "kiro",
-        "label": "Kiro CLI",
-        "enabled": false,
-        "command": "kiro-cli",
-        "args": [],
-        "handoffArgs": [],
-        "integrationType": "pty_with_bootstrap_input",
-        "bootstrapInput": "{{sessionPrompt}}\n",
-        "handoffBootstrapInput": "{{handoffPrompt}}\n",
-        "controllable": true
-      },
-      {
-        "name": "amp",
-        "label": "Amp",
-        "enabled": false,
-        "command": "amp",
-        "args": [],
-        "handoffArgs": [],
-        "integrationType": "pty_with_bootstrap_input",
-        "bootstrapInput": "{{sessionPrompt}}\n",
-        "handoffBootstrapInput": "{{handoffPrompt}}\n",
         "controllable": true
       }
     ]

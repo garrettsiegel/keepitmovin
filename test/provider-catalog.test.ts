@@ -4,7 +4,6 @@ import {
   getCatalogEntry,
   getDefaultInteractiveProviders,
   getDefaultProviderOrder,
-  getDefaultTaskProviders,
   getProviderCatalog,
   isHarnessControllable
 } from "../src/provider-catalog.js";
@@ -60,7 +59,6 @@ describe("provider catalog", () => {
     const claude = getCatalogEntry("claude");
     const codex = getCatalogEntry("codex");
     const antigravity = getCatalogEntry("antigravity");
-    const aider = getCatalogEntry("aider");
 
     expect(claude && catalogEntryToInteractiveProvider(claude)).toMatchObject({
       name: "claude",
@@ -82,23 +80,6 @@ describe("provider catalog", () => {
       bootstrapInput: "{{sessionPrompt}}\n",
       handoffBootstrapInput: "{{handoffPrompt}}\n"
     });
-    expect(aider && catalogEntryToInteractiveProvider(aider)).toMatchObject({
-      name: "aider",
-      integrationType: "pty_with_bootstrap_input",
-      bootstrapInput: "{{sessionPrompt}}\n"
-    });
-  });
-
-  it("exposes task-mode providers only for launchable terminal tools", () => {
-    const taskProviders = getDefaultTaskProviders(1_000);
-
-    expect(taskProviders.map((provider) => provider.name)).toEqual([
-      "claude",
-      "codex",
-      "cline",
-      "opencode"
-    ]);
-    expect(taskProviders.find((provider) => provider.name === "github-copilot")).toBeUndefined();
   });
 
   it("keeps legacy Gemini out of default harness providers", () => {

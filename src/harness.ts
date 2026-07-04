@@ -271,7 +271,7 @@ const detectLiveFailure = (
 };
 
 // Post-exit detection. A non-zero exit is already a strong failure signal, so
-// this uses the broader classifier (matching task mode) on the stripped tail.
+// this uses the broader classifier on the stripped tail.
 const detectExitFailure = (
   tail: string,
   provider: InteractiveProviderConfig,

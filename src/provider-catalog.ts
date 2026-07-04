@@ -1,6 +1,5 @@
 import type {
   InteractiveProviderConfig,
-  ProviderConfig,
   ProviderIntegrationType
 } from "./types.js";
 
@@ -139,7 +138,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     auth: "Sign in by running `agy`, or set GEMINI_API_KEY / ANTIGRAVITY_API_KEY for headless use.",
     homepage: "https://antigravity.google/",
     summary: "Google's agent-first coding platform; its CLI ships as the `agy` command.",
-    limitation: "CodePass drives Antigravity through the interactive `agy` TUI inside a PTY and types the prompt after launch. Its non-interactive `-p`/`--print` mode currently drops stdout on non-TTY pipes, so CodePass does not use it for task mode."
+    limitation: "CodePass drives Antigravity through the interactive `agy` TUI inside a PTY and types the prompt after launch."
   },
   {
     name: "opencode",
@@ -317,17 +316,6 @@ export const getDefaultProviderOrder = (): string[] =>
   getDefaultInteractiveProviders()
     .filter((provider) => provider.enabled)
     .map((provider) => provider.name);
-
-export const getDefaultTaskProviders = (timeoutMs: number): ProviderConfig[] =>
-  PROVIDER_CATALOG
-    .filter((entry) => entry.group === "harness" && Boolean(entry.command) && Boolean(entry.taskArgs))
-    .map((entry) => ({
-      name: entry.name,
-      enabled: entry.defaultEnabled,
-      command: entry.command ?? entry.name,
-      args: entry.taskArgs ?? [],
-      timeoutMs
-    }));
 
 export const mergeCatalogInteractiveProviders = (
   providers: InteractiveProviderConfig[]

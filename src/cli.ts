@@ -8,12 +8,11 @@ import { runDoctor } from "./doctor.js";
 import { clearHandoffArtifacts, summarizeHandoffFile } from "./handoff-file.js";
 import { runHarness } from "./harness.js";
 import { describeProviderChain, getEnabledInteractiveProviders } from "./interactive-provider.js";
-import { runCodePass } from "./run.js";
 import { readLatestSessionLog } from "./session-log.js";
 import { getSetupState, runSetupWizard } from "./setup.js";
 import { renderHarnessStart } from "./terminal-ui.js";
 import { ensureProviderFreshness } from "./updates.js";
-import type { CodePassConfig, RunAttemptLog } from "./types.js";
+import type { CodePassConfig } from "./types.js";
 
 interface CliOptions {
   all?: boolean;
@@ -55,42 +54,10 @@ const readOptionFromArgv = (names: string[]): string | undefined => {
   return undefined;
 };
 
-const parseMaxRetries = (value: string | undefined): number | undefined => {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error("--max-retries must be a non-negative integer");
-  }
-
-  return parsed;
-};
-
-const formatAttempt = (attempt: RunAttemptLog): string => {
-  const status = attempt.success ? chalk.green("OK") : chalk.red("FAIL");
-  const reason = attempt.success ? "" : ` (${attempt.errorType ?? "unknown"})`;
-  return `${status} ${attempt.provider}${reason} in ${attempt.durationMs}ms`;
-};
-
-const normalizeArgv = (argv: string[]): string[] => {
-  const normalizedArgv =
-    argv[2] === "--" ? [argv[0] ?? "node", argv[1] ?? "codepass", ...argv.slice(3)] : argv;
-  const firstArg = normalizedArgv[2];
-  const explicitCommands = new Set(["clear", "handoff", "init", "doctor", "providers", "run", "session", "setup", "help"]);
-
-  if (!firstArg || firstArg.startsWith("-") || explicitCommands.has(firstArg)) {
-    return normalizedArgv;
-  }
-
-  return [
-    normalizedArgv[0] ?? "node",
-    normalizedArgv[1] ?? "codepass",
-    "run",
-    ...normalizedArgv.slice(2)
-  ];
-};
+// Support `codepass -- <args>` by stripping the `--` separator; the bare
+// `codepass` invocation launches the interactive harness (default action).
+const normalizeArgv = (argv: string[]): string[] =>
+  argv[2] === "--" ? [argv[0] ?? "node", argv[1] ?? "codepass", ...argv.slice(3)] : argv;
 
 // On `codepass`, decide which config to launch with. First run → wizard. Otherwise
 // confirm the saved chain (reuse / reconfigure / start fresh). Non-interactive
@@ -252,20 +219,6 @@ program
       console.log(chalk.bold("Sessions dir:"), summary.sessionsDir);
 
       console.log("");
-      console.log(chalk.bold("Providers:"));
-      for (const provider of summary.providerHealth) {
-        const enabled = provider.enabled ? "enabled" : "disabled";
-        const status = provider.available
-          ? chalk.green("ready")
-          : provider.enabled
-            ? chalk.yellow("needs setup")
-            : chalk.blue("add later");
-        console.log(
-          `- ${provider.name}: ${enabled}, ${status} (${provider.command}) - ${provider.detail}`
-        );
-      }
-
-      console.log("");
       console.log(chalk.bold("Harness providers:"));
       for (const provider of summary.interactiveProviderHealth) {
         const enabled = provider.enabled ? "enabled" : "disabled";
@@ -297,7 +250,7 @@ program
       console.log("");
       if (summary.readyInteractiveProviderCount > 0) {
         console.log(chalk.green(`Ready harness providers: ${summary.readyInteractiveProviderCount}`));
-        console.log(chalk.gray("Next: run `codepass` to start the harness or `codepass run \"your task\" --dry-run` to preview task mode."));
+        console.log(chalk.gray("Next: run `codepass` to start the harness."));
       } else {
         console.log(chalk.red("No enabled harness providers are available on PATH."));
         process.exitCode = 1;
@@ -435,108 +388,6 @@ program
       console.log("Changed files:", latest.changedFiles.length);
       console.log("Log:", latest.sessionLogPath ?? "(unknown)");
     } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exitCode = 1;
-    }
-  });
-
-program
-  .command("run")
-  .description("Run a task through the configured fallback chain.")
-  .argument("[task]", "Task to run through the fallback chain")
-  .option("-c, --config <path>", "Config file path")
-  .option("--cwd <path>", "Working directory", process.cwd())
-  .option("--dry-run", "Build and log the handoff prompt without invoking a provider")
-  .option("--max-retries <count>", "Retry each fallback-eligible provider before moving on")
-  .option("--print-prompt", "Print the generated handoff prompt after the run")
-  .option("--provider <name>", "Run only one configured provider by name")
-  .action(async (task: string | undefined, options: CliOptions) => {
-    const resolvedOptions: CliOptions = {
-      ...options,
-      config: readOptionFromArgv(["--config", "-c"]) ?? options.config,
-      cwd: readOptionFromArgv(["--cwd"]) ?? options.cwd
-    };
-
-    if (!task) {
-      program.help({ error: true });
-      return;
-    }
-
-    const spinner = ora("Preparing CodePass handoff...").start();
-
-    try {
-      const summary = await runCodePass(task, {
-        cwd: resolvedOptions.cwd ?? process.cwd(),
-        configPath: resolvedOptions.config,
-        dryRun: resolvedOptions.dryRun ?? false,
-        provider: resolvedOptions.provider,
-        maxRetries: parseMaxRetries(resolvedOptions.maxRetries),
-        onAttemptStart: (provider, retryIndex) => {
-          const retryLabel = retryIndex > 0 ? ` retry ${retryIndex}` : "";
-          spinner.text = `Trying ${provider}${retryLabel}...`;
-        },
-        onAttemptEnd: (attempt) => {
-          spinner.text = `${attempt.provider} finished: ${
-            attempt.success ? "success" : attempt.errorType ?? "failed"
-          }`;
-        }
-      });
-
-      if (summary.success) {
-        spinner.succeed(
-          summary.dryRun
-            ? "CodePass dry run completed."
-            : `CodePass completed with ${summary.finalProvider ?? "unknown provider"}.`
-        );
-      } else {
-        spinner.fail("CodePass exhausted the fallback chain.");
-      }
-
-      console.log("");
-      console.log(chalk.bold("Task:"), summary.task);
-      console.log(chalk.bold("Providers:"), summary.providerOrder.join(" -> "));
-      console.log(chalk.bold("Tried:"), summary.providersTried.join(", "));
-
-      console.log("");
-      console.log(chalk.bold("Attempt results:"));
-      for (const attempt of summary.attempts) {
-        console.log(`- ${formatAttempt(attempt)}`);
-      }
-
-      if (summary.changedFiles.length > 0) {
-        console.log("");
-        console.log(chalk.bold("Changed files:"));
-        for (const file of summary.changedFiles) {
-          console.log(`- ${file}`);
-        }
-      }
-
-      console.log("");
-      console.log(chalk.bold("Run log:"), summary.logPath ?? "(not written)");
-
-      if (resolvedOptions.printPrompt) {
-        const latestPrompt = summary.attempts.at(-1)?.prompt;
-        if (latestPrompt) {
-          console.log("");
-          console.log(chalk.bold("Generated handoff prompt:"));
-          console.log(latestPrompt);
-        }
-      }
-
-      if (summary.dryRun) {
-        console.log(chalk.gray("Dry run only: no provider was invoked."));
-      }
-
-      if (!summary.success) {
-        const latest = summary.attempts.at(-1);
-        if (latest) {
-          console.log("");
-          console.log(chalk.bold("Last failure:"), `${latest.provider} (${latest.errorType ?? "unknown"})`);
-        }
-        process.exitCode = 1;
-      }
-    } catch (error) {
-      spinner.fail("CodePass failed before the fallback chain finished.");
       console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exitCode = 1;
     }

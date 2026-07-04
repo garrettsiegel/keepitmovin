@@ -43,41 +43,6 @@ export const getChangedFiles = async (cwd: string): Promise<string[]> => {
   ].sort();
 };
 
-/**
- * Stages all changes and creates a local checkpoint commit. Never pushes.
- * Returns the new commit SHA, or undefined when there is nothing to commit, the
- * directory is not a git repo, or the commit fails (e.g. no configured git
- * identity). Opt-in via `git.createCheckpointCommit`.
- */
-export const createCheckpointCommit = async (
-  cwd: string,
-  message: string
-): Promise<string | undefined> => {
-  if (!(await isGitRepo(cwd))) {
-    return undefined;
-  }
-
-  const changedFiles = await getChangedFiles(cwd);
-  if (changedFiles.length === 0) {
-    return undefined;
-  }
-
-  await runGit(cwd, ["add", "-A"]);
-
-  const commit = await execa("git", ["commit", "-m", message], {
-    cwd,
-    reject: false,
-    stdout: "pipe",
-    stderr: "pipe"
-  });
-
-  if (commit.exitCode !== 0) {
-    return undefined;
-  }
-
-  return (await runGit(cwd, ["rev-parse", "HEAD"])) || undefined;
-};
-
 export const getGitContext = async (
   cwd: string,
   maxDiffChars: number

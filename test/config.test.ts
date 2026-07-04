@@ -16,15 +16,8 @@ describe("config", () => {
     const loaded = await loadConfig(cwd);
 
     expect(loaded.path).toBeUndefined();
-    expect(loaded.config.providers.map((provider) => provider.name)).toEqual([
-      "claude",
-      "codex",
-      "cline",
-      "opencode"
-    ]);
-    expect(loaded.config.providers.find((provider) => provider.name === "cline")?.enabled).toBe(false);
     expect(loaded.config.harness.providers.map((provider) => provider.name)).toEqual(
-      expect.arrayContaining(["claude", "codex", "cline", "antigravity", "opencode", "aider", "goose", "kiro", "amp"])
+      expect.arrayContaining(["claude", "codex", "cline", "antigravity", "opencode"])
     );
     expect(loaded.config.updates).toMatchObject({
       checkOnStart: true,
@@ -36,21 +29,15 @@ describe("config", () => {
     const cwd = await makeRealTempDir();
     const configPath = path.join(cwd, "codepass.config.json");
     const config = defaultConfig();
-    config.providers = [
-      {
-        name: "fake",
-        enabled: true,
-        command: process.execPath,
-        args: ["-e", "process.exit(0)"],
-        timeoutMs: 1_000
-      }
-    ];
+    config.harness.setupComplete = true;
+    config.harness.providerOrder = ["codex", "claude"];
     await writeFile(configPath, `${JSON.stringify(config)}\n`, "utf8");
 
     const loaded = await loadConfig(cwd);
 
     expect(loaded.path).toBe(configPath);
-    expect(loaded.config.providers[0]?.name).toBe("fake");
+    expect(loaded.config.harness.setupComplete).toBe(true);
+    expect(loaded.config.harness.providerOrder).toEqual(["codex", "claude"]);
   });
 
   it("migrates old catalog launch defaults to bootstrap input", async () => {
@@ -80,20 +67,22 @@ describe("config", () => {
     });
   });
 
-  it("rejects invalid provider entries", async () => {
+  it("rejects invalid harness provider entries", async () => {
     const cwd = await makeRealTempDir();
     await writeFile(
       path.join(cwd, "codepass.config.json"),
       JSON.stringify({
-        providers: [
-          {
-            name: "broken",
-            enabled: true,
-            command: "",
-            args: [],
-            timeoutMs: 1_000
-          }
-        ]
+        harness: {
+          providers: [
+            {
+              name: "broken",
+              label: "Broken",
+              command: "",
+              args: [],
+              handoffArgs: []
+            }
+          ]
+        }
       }),
       "utf8"
     );
@@ -108,7 +97,7 @@ describe("config", () => {
 
     expect(result.createdConfig).toBe(true);
     expect(JSON.parse(await readFile(result.configPath, "utf8"))).toMatchObject({
-      providers: expect.any(Array)
+      harness: { providers: expect.any(Array) }
     });
     await expect(stat(path.join(cwd, ".codepass", "runs"))).resolves.toMatchObject({
       isDirectory: expect.any(Function)

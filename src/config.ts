@@ -4,7 +4,6 @@ import { z } from "zod";
 import {
   getDefaultInteractiveProviders,
   getDefaultProviderOrder,
-  getDefaultTaskProviders,
   mergeCatalogInteractiveProviders
 } from "./provider-catalog.js";
 import type { AgentErrorType, CodePassConfig } from "./types.js";
@@ -16,7 +15,6 @@ export const DEFAULT_LOGS_DIR = ".codepass/logs";
 export const DEFAULT_SESSIONS_DIR = ".codepass/sessions";
 export const DEFAULT_HANDOFF_PATH = ".codepass/current/handoff.md";
 export const DEFAULT_HANDOFF_ARCHIVE_DIR = ".codepass/handoffs";
-export const DEFAULT_TIMEOUT_MS = 900_000;
 export const DEFAULT_TRANSCRIPT_LIMIT_CHARS = 80_000;
 
 export const agentErrorTypeSchema = z.enum([
@@ -42,15 +40,6 @@ export const providerIntegrationTypeSchema = z.enum([
 
 export const updateModeSchema = z.enum(["off", "prompt", "always"]);
 
-export const providerConfigSchema = z.object({
-  name: z.string().min(1),
-  enabled: z.boolean().default(true),
-  command: z.string().min(1),
-  args: z.array(z.string()).default([]),
-  timeoutMs: z.number().int().positive().default(DEFAULT_TIMEOUT_MS),
-  fallbackOn: z.array(agentErrorTypeSchema).optional()
-});
-
 export const interactiveProviderConfigSchema = z.object({
   name: z.string().min(1),
   label: z.string().min(1),
@@ -66,7 +55,6 @@ export const interactiveProviderConfigSchema = z.object({
 });
 
 export const codepassConfigSchema = z.object({
-  providers: z.array(providerConfigSchema).min(1),
   fallbackOn: z.array(agentErrorTypeSchema).default([
     "rate_limit",
     "quota_exceeded",
@@ -75,44 +63,19 @@ export const codepassConfigSchema = z.object({
     "command_not_found",
     "nonzero_exit"
   ]),
-  maxRetries: z.number().int().min(0).default(0),
-  git: z.object({
-    requireCleanWorkingTree: z.boolean().default(false),
-    createCheckpointCommit: z.boolean().default(false),
-    showDiffAfterRun: z.boolean().default(true)
-  }).default({
-    requireCleanWorkingTree: false,
-    createCheckpointCommit: false,
-    showDiffAfterRun: true
-  }),
   context: z.object({
-    includeGitStatus: z.boolean().default(true),
-    includeRecentDiff: z.boolean().default(true),
-    includeProjectInstructions: z.boolean().default(true),
-    maxDiffChars: z.number().int().positive().default(20_000),
-    instructionFiles: z.array(z.string()).default([
-      "AGENTS.md",
-      "CLAUDE.md",
-      ".cursorrules",
-      ".clinerules"
-    ])
+    maxDiffChars: z.number().int().positive().default(20_000)
   }).default({
-    includeGitStatus: true,
-    includeRecentDiff: true,
-    includeProjectInstructions: true,
-    maxDiffChars: 20_000,
-    instructionFiles: ["AGENTS.md", "CLAUDE.md", ".cursorrules", ".clinerules"]
+    maxDiffChars: 20_000
   }),
   logs: z.object({
     runsDir: z.string().default(DEFAULT_RUNS_DIR),
     logsDir: z.string().default(DEFAULT_LOGS_DIR),
-    sessionsDir: z.string().default(DEFAULT_SESSIONS_DIR),
-    fullProviderOutput: z.boolean().default(true)
+    sessionsDir: z.string().default(DEFAULT_SESSIONS_DIR)
   }).default({
     runsDir: DEFAULT_RUNS_DIR,
     logsDir: DEFAULT_LOGS_DIR,
-    sessionsDir: DEFAULT_SESSIONS_DIR,
-    fullProviderOutput: true
+    sessionsDir: DEFAULT_SESSIONS_DIR
   }),
   updates: z.object({
     checkOnStart: z.boolean().default(true),
@@ -154,9 +117,7 @@ const normalizeConfig = (config: CodePassConfig): CodePassConfig => codepassConf
   }
 });
 
-export const defaultConfig = (): CodePassConfig => normalizeConfig(codepassConfigSchema.parse({
-  providers: getDefaultTaskProviders(DEFAULT_TIMEOUT_MS)
-}));
+export const defaultConfig = (): CodePassConfig => normalizeConfig(codepassConfigSchema.parse({}));
 
 export const resolveConfigPath = (cwd: string, configPath?: string): string => {
   if (!configPath) {
