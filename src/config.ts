@@ -51,7 +51,8 @@ export const interactiveProviderConfigSchema = z.object({
   bootstrapInput: z.string().optional(),
   handoffBootstrapInput: z.string().optional(),
   controllable: z.boolean().optional(),
-  fallbackOn: z.array(agentErrorTypeSchema).optional()
+  fallbackOn: z.array(agentErrorTypeSchema).optional(),
+  limitPatterns: z.array(z.string()).optional()
 });
 
 export const codepassConfigSchema = z.object({

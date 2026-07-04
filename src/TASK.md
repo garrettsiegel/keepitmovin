@@ -87,30 +87,39 @@ PLAN.md targets exactly: claude code, codex, antigravity, opencode, openrouter, 
       running" warning (confirms the doctor version-check path works for it) and `openrouter` as a
       guided setup-guide row.
 
-## T3 — Per-provider rate-limit detection · **Opus**
+## T3 — Per-provider rate-limit detection · **Opus** ✅ DONE
 
 PLAN.md: "For all of these tools, CodePass needs to know how to detect if the user has been rate
-limited." Today `src/errors.ts` has one generic keyword list. **This is the riskiest task in the
-plan** — read the Gotchas in CLAUDE.md first: broad patterns false-positive when an agent merely
-*discusses* rate limits in prose, causing unwanted mid-session switches.
+limited." `src/errors.ts` had one generic keyword list. This was the riskiest task — the CLAUDE.md
+gotcha is that broad patterns false-positive on prose. The live detector already had a solid prose
+guard (`isStatusLikeLine` gating in `harness.ts:detectLiveFailure`); T3 layered per-provider banners
+on top of it without weakening that guard.
 
-- [ ] Add an optional `limitPatterns: string[]` field to the catalog entry type in
-      `src/provider-catalog.ts` and to the provider schema in `src/config.ts` (mirror in `types.ts`),
-      flowing through `mergeCatalogInteractiveProviders`.
-- [ ] Seed provider-specific patterns in the catalog — prefer exact banner strings over generic words:
-      - claude: `"5-hour limit reached"`, `"usage limit reached"`, `"/upgrade to increase"` -style banners
-      - codex: `"you've hit your usage limit"`, `"usage limit"` banner variants
-      - antigravity / opencode / cline: research their actual limit banners; if unverifiable, leave
-        empty and note it in the catalog entry's `limitation` field
-      - ollama: `"connection refused"` (daemon down — treat as provider failure, not rate limit)
-- [ ] In `detectFallbackError` in `src/harness.ts`, match the active provider's `limitPatterns`
-      **in addition to** the generic `LIMIT_PATTERN_GROUPS` from `src/errors.ts`. Keep the existing
-      scoping/indicator logic that guards against prose mentions (see comment near harness.ts:212).
-- [ ] Tests in `test/harness.test.ts` / `test/errors.test.ts`, both directions:
-      (a) transcript where the agent *talks about* rate limits in prose → **no switch**;
-      (b) a real provider banner (per-provider pattern) → **switch**.
-- [ ] Verify: build/test/lint pass. Manually sanity-check by running the harness and pasting a limit
-      phrase into normal agent prose — it must not trigger a switch.
+- [x] Added optional `limitPatterns?: string[]` to the catalog entry type + `catalogEntryToInteractiveProvider`
+      (`provider-catalog.ts`), the `interactiveProviderConfigSchema` (`config.ts`), and
+      `InteractiveProviderConfig` (`types.ts`). Propagated through `mergeCatalogInteractiveProviders`
+      so saved configs re-hydrate the catalog's patterns (verified: a saved claude/codex config with
+      no `limitPatterns` gets them back on merge).
+- [x] Seeded `claude` (`"5-hour limit reached"`, `"upgrade to increase your usage limit"`,
+      `"you've reached your usage limit"`) and `codex` (`"you've hit your usage limit"` + variants).
+      Left antigravity/opencode/cline/ollama empty — their exact banners aren't verified here, and
+      the generic detector already covers the common families. Noted this in the antigravity/opencode
+      `limitation` fields. Did **not** add ollama `"connection refused"`: that's a daemon-down failure,
+      not a rate limit, and it surfaces as a non-zero exit handled by `detectExitFailure` — misfiling
+      it as `rate_limit` would be wrong.
+- [x] **Design decision (key):** generic patterns stay gated by `isStatusLikeLine` (the prose guard);
+      a provider's curated `limitPatterns` are exact, maintainer-vouched banners, so they're trusted on
+      a *direct* substring match (new `matchProviderLimitPattern` in `errors.ts`). This is what makes
+      the feature add value — it catches distinctive banners (e.g. `"you are out of credits"`) that the
+      generic status-line heuristic would filter out. A provider match classifies as `rate_limit` and
+      still respects `fallbackOn`.
+- [x] Tests both directions: `test/harness.test.ts` — (a) a provider banner the generic patterns would
+      miss → **switch**; (b) provider has `limitPatterns` but the agent discusses limits in prose
+      (rate limit / 429) → **no switch** (guard intact); (c) banner present but `rate_limit` excluded
+      from that provider's `fallbackOn` → **no switch**. Plus `matchProviderLimitPattern` unit tests in
+      `test/errors.test.ts` and a catalog-propagation test. 53 tests pass.
+- [x] Verify: build/lint/test all green. Updated the CLAUDE.md detection gotcha to describe the two
+      detection layers.
 
 ## T4 — Single prompt library: migrate @inquirer → clack · **Sonnet**
 

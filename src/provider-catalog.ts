@@ -25,6 +25,10 @@ export interface ProviderCatalogEntry {
   bootstrapInput?: string;
   handoffBootstrapInput?: string;
   taskArgs?: string[];
+  // Exact rate/usage-limit banners this tool prints when it blocks. Kept specific
+  // enough that they cannot appear in an agent's ordinary prose — see T3 notes in
+  // src/TASK.md and harness.ts:detectLiveFailure.
+  limitPatterns?: string[];
   installCommands?: ProviderCommandSpec[];
   updateCommands?: ProviderCommandSpec[];
   install: string;
@@ -56,6 +60,11 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     bootstrapInput: DEFAULT_BOOTSTRAP,
     handoffBootstrapInput: DEFAULT_HANDOFF_BOOTSTRAP,
     taskArgs: ["-p", "--permission-mode", "acceptEdits", "{{prompt}}"],
+    limitPatterns: [
+      "5-hour limit reached",
+      "upgrade to increase your usage limit",
+      "you've reached your usage limit"
+    ],
     install: "Install Claude Code, then run `claude auth`.",
     auth: "Run `claude auth` and follow the browser login.",
     updateCommands: [
@@ -90,6 +99,11 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "--color",
       "never",
       "{{prompt}}"
+    ],
+    limitPatterns: [
+      "you've hit your usage limit",
+      "you have hit your usage limit",
+      "reached your usage limit"
     ],
     install: "Install Codex CLI, then run `codex login`.",
     auth: "Run `codex login` or configure your OpenAI API key.",
@@ -138,7 +152,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     auth: "Sign in by running `agy`, or set GEMINI_API_KEY / ANTIGRAVITY_API_KEY for headless use.",
     homepage: "https://antigravity.google/",
     summary: "Google's agent-first coding platform; its CLI ships as the `agy` command.",
-    limitation: "CodePass drives Antigravity through the interactive `agy` TUI inside a PTY and types the prompt after launch."
+    limitation: "CodePass drives Antigravity through the interactive `agy` TUI inside a PTY and types the prompt after launch. No verified rate-limit banner yet, so it relies on CodePass's generic limit detection (add exact strings to `limitPatterns` once confirmed)."
   },
   {
     name: "opencode",
@@ -162,7 +176,8 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       }
     ],
     homepage: "https://github.com/anomalyco/opencode",
-    summary: "Open-source terminal TUI/headless coding agent with provider management."
+    summary: "Open-source terminal TUI/headless coding agent with provider management.",
+    limitation: "opencode routes to whichever model provider you configure, so its limit banner varies by provider — CodePass uses generic limit detection here rather than a fixed `limitPatterns` list."
   },
   {
     name: "ollama",
@@ -232,7 +247,8 @@ export const catalogEntryToInteractiveProvider = (
     integrationType: entry.integrationType,
     bootstrapInput: entry.bootstrapInput,
     handoffBootstrapInput: entry.handoffBootstrapInput,
-    controllable: entry.controllable
+    controllable: entry.controllable,
+    limitPatterns: entry.limitPatterns
   };
 };
 
@@ -268,7 +284,8 @@ export const mergeCatalogInteractiveProviders = (
         integrationType: catalogProvider.integrationType,
         bootstrapInput: catalogProvider.bootstrapInput,
         handoffBootstrapInput: catalogProvider.handoffBootstrapInput,
-        controllable: catalogProvider.controllable
+        controllable: catalogProvider.controllable,
+        limitPatterns: catalogProvider.limitPatterns
       };
     }
 

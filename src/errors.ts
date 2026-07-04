@@ -59,6 +59,25 @@ export const matchLimitPattern = (
   return undefined;
 };
 
+/**
+ * Returns the first provider-specific limit banner from `patterns` that appears
+ * in `text`. These come from a tool's catalog entry (`limitPatterns`) — exact,
+ * tool-emitted banners the maintainer has vouched for, so unlike the generic
+ * patterns above they are trusted on a direct match. They always mean the
+ * provider is rate/usage limited, so the caller classifies them as `rate_limit`.
+ */
+export const matchProviderLimitPattern = (
+  text: string,
+  patterns: string[] | undefined
+): string | undefined => {
+  if (!patterns || patterns.length === 0) {
+    return undefined;
+  }
+
+  const lower = text.toLowerCase();
+  return patterns.find((pattern) => lower.includes(pattern.toLowerCase()));
+};
+
 export const classifyError = (
   stdout: string,
   stderr: string,

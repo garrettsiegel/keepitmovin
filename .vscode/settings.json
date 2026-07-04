@@ -4,8 +4,17 @@
         "**/.svn": true,
         "**/.hg": true,
         "**/.DS_Store": true,
-        "**/Thumbs.db": true
+        "**/Thumbs.db": true,
+        "node_modules": true,
+        "dist": true,
+        ".turbo": true,
+        "tsconfig.json": true
     },
-    "hide-files.files": [],
+    "hide-files.files": [
+        "node_modules",
+        "dist",
+        ".turbo",
+        "tsconfig.json"
+    ],
     "folder-color.pathColors": []
 }

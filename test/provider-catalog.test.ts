@@ -91,4 +91,11 @@ describe("provider catalog", () => {
     });
   });
 
+  it("carries provider-specific limit banners onto the launchable provider", () => {
+    const claude = getCatalogEntry("claude");
+    const provider = claude && catalogEntryToInteractiveProvider(claude);
+
+    expect(provider?.limitPatterns).toEqual(expect.arrayContaining(["5-hour limit reached"]));
+  });
+
 });

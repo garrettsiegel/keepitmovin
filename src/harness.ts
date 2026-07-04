@@ -9,7 +9,7 @@ import type {
   InteractiveProviderConfig,
   CodePassConfig
 } from "./types.js";
-import { classifyError, matchLimitPattern } from "./errors.js";
+import { classifyError, matchLimitPattern, matchProviderLimitPattern } from "./errors.js";
 import { getChangedFiles } from "./git.js";
 import {
   appendHandoffCheckpoint,
@@ -246,7 +246,9 @@ const isStatusLikeLine = (line: string, pattern: string): boolean => {
 };
 
 // Live (still-running) detection. Scoped to the transcript tail with the prompts
-// stripped, and only trusts a limit pattern that appears on a status-like line.
+// stripped. A generic pattern is only trusted on a status-like line (prose guard);
+// a provider's curated `limitPatterns` are exact tool banners, trusted on a direct
+// match so distinctive banners that don't read as status lines still switch.
 const detectLiveFailure = (
   tail: string,
   provider: InteractiveProviderConfig,
@@ -257,6 +259,10 @@ const detectLiveFailure = (
   const fallbackOn = provider.fallbackOn ?? config.fallbackOn;
 
   for (const line of cleaned.split("\n")) {
+    if (fallbackOn.includes("rate_limit") && matchProviderLimitPattern(line, provider.limitPatterns)) {
+      return "rate_limit";
+    }
+
     const match = matchLimitPattern(line);
     if (!match || !fallbackOn.includes(match.type)) {
       continue;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyError } from "../src/errors.js";
+import { classifyError, matchProviderLimitPattern } from "../src/errors.js";
 
 describe("classifyError", () => {
   it("detects rate limits", () => {
@@ -28,5 +28,21 @@ describe("classifyError", () => {
 
   it("returns undefined for success", () => {
     expect(classifyError("ok", "", 0)).toBeUndefined();
+  });
+});
+
+describe("matchProviderLimitPattern", () => {
+  it("matches a provider banner case-insensitively", () => {
+    expect(matchProviderLimitPattern("You are OUT of Credits now", ["you are out of credits"]))
+      .toBe("you are out of credits");
+  });
+
+  it("returns undefined when no banner is present", () => {
+    expect(matchProviderLimitPattern("all good here", ["you are out of credits"])).toBeUndefined();
+  });
+
+  it("returns undefined when the provider has no patterns", () => {
+    expect(matchProviderLimitPattern("you are out of credits", undefined)).toBeUndefined();
+    expect(matchProviderLimitPattern("you are out of credits", [])).toBeUndefined();
   });
 });

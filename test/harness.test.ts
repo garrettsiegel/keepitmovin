@@ -618,4 +618,152 @@ describe("runHarness", () => {
     expect(summary.attempts[0]?.errorType).toBe("manual_switch");
     expect(summary.finalProvider).toBe("codex");
   });
+
+  it("switches on a provider-specific limit banner the generic patterns would miss", async () => {
+    const cwd = await makeTempDir();
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.providerOrder = ["claude", "codex"];
+    config.harness.providers = [
+      {
+        name: "claude",
+        label: "Claude Code",
+        enabled: true,
+        command: "fake-claude",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty",
+        // Exact banner with no generic pattern ("rate limit"/"usage limit"/…) and
+        // no status word ("reached"/"hit"/…), so only the provider path can catch it.
+        limitPatterns: ["you are out of credits"]
+      },
+      {
+        name: "codex",
+        label: "Codex",
+        enabled: true,
+        command: "fake-codex",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty"
+      }
+    ];
+    const ptyFactory: PtyFactory = (command) =>
+      command === "fake-claude"
+        ? new FakePty({
+            data: "You are out of credits until tomorrow.",
+            exitCode: 1,
+            waitForKill: true
+          })
+        : new FakePty({ data: "continued", exitCode: 0 });
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      switchSelector: async (choices) => choices.find((choice) => choice.provider.name === "codex"),
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.attempts[0]?.errorType).toBe("rate_limit");
+    expect(summary.finalProvider).toBe("codex");
+    expect(summary.success).toBe(true);
+  });
+
+  it("keeps the prose guard intact even when the provider has limitPatterns", async () => {
+    const cwd = await makeTempDir();
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.providerOrder = ["claude", "codex"];
+    config.harness.providers = [
+      {
+        name: "claude",
+        label: "Claude Code",
+        enabled: true,
+        command: "fake-claude",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty",
+        limitPatterns: ["you are out of credits"]
+      },
+      {
+        name: "codex",
+        label: "Codex",
+        enabled: true,
+        command: "fake-codex",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty"
+      }
+    ];
+    const launches: string[] = [];
+    const ptyFactory: PtyFactory = (command) => {
+      launches.push(command);
+      // Generic limit words appear only in prose, and the exact banner never does.
+      return new FakePty({
+        data: "Checked the API rate limit of 100 req/min and 429 handling — everything is fine.",
+        exitCode: 0
+      });
+    };
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.attempts).toHaveLength(1);
+    expect(summary.attempts[0]?.errorType).toBeUndefined();
+    expect(summary.finalProvider).toBe("claude");
+    expect(launches).toEqual(["fake-claude"]);
+  });
+
+  it("ignores a provider limit banner when rate_limit is not a fallback trigger", async () => {
+    const cwd = await makeTempDir();
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.providerOrder = ["claude", "codex"];
+    config.harness.providers = [
+      {
+        name: "claude",
+        label: "Claude Code",
+        enabled: true,
+        command: "fake-claude",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty",
+        limitPatterns: ["you are out of credits"],
+        // This provider opts out of rate-limit switching entirely.
+        fallbackOn: ["timeout"]
+      },
+      {
+        name: "codex",
+        label: "Codex",
+        enabled: true,
+        command: "fake-codex",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty"
+      }
+    ];
+    const launches: string[] = [];
+    const ptyFactory: PtyFactory = (command) => {
+      launches.push(command);
+      return new FakePty({
+        data: "You are out of credits until tomorrow.",
+        exitCode: 0
+      });
+    };
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.attempts).toHaveLength(1);
+    expect(summary.attempts[0]?.errorType).toBeUndefined();
+    expect(launches).toEqual(["fake-claude"]);
+  });
 });

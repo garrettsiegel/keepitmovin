@@ -34,6 +34,9 @@ export interface InteractiveProviderConfig {
   handoffBootstrapInput?: string;
   controllable?: boolean;
   fallbackOn?: AgentErrorType[];
+  // Exact, tool-emitted rate/usage-limit banners for this provider. Trusted on a
+  // direct match during live detection (see harness.ts:detectLiveFailure).
+  limitPatterns?: string[];
 }
 
 export type CodePassConfig = z.infer<typeof codepassConfigSchema>;
