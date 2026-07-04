@@ -1,5 +1,7 @@
 # CodePass
 
+![CodePass](./public/Gemini_Generated_Image_dg5cwbdg5cwbdg5c.png)
+
 **CodePass is a terminal harness that lets you switch between AI coding agents — Claude Code,
 Codex, Antigravity, opencode, Cline, Ollama — without losing your place.**
 
