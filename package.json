@@ -1,6 +1,6 @@
 {
   "name": "codepass",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Interactive terminal harness that switches between coding agents (Claude Code, Codex, Antigravity, opencode, Cline) and carries a shared handoff file so you never lose context when a rate limit hits or you want to change tools.",
   "keywords": [
     "cli",
