@@ -22,6 +22,16 @@ export type AgentErrorType =
   | "nonzero_exit"
   | "unknown";
 
+// How CodePass reads a tool's own local usage/limit state. Only one kind exists
+// today; widen UsageProbeKind to a union when another tool exposes headroom data.
+export type UsageProbeKind = "codex-session-files";
+
+export interface UsageProbeSpec {
+  kind: UsageProbeKind;
+  // Overrides harness.usageProbe.thresholdPercent for this provider only.
+  thresholdPercent?: number;
+}
+
 export interface InteractiveProviderConfig {
   name: ProviderName;
   label: string;
@@ -38,6 +48,9 @@ export interface InteractiveProviderConfig {
   // live detection when they head a status-like line (see
   // failure-detection.ts:detectLiveFailure).
   limitPatterns?: string[];
+  // Optional local-file usage probe (see usage-probe.ts). Absent for tools with
+  // no readable headroom state (e.g. Claude Code today).
+  usageProbe?: UsageProbeSpec;
 }
 
 export type CodePassConfig = z.infer<typeof codepassConfigSchema>;
@@ -61,6 +74,9 @@ export interface HarnessAttemptLog {
   endedAt: string;
   exitCode: number | null;
   errorType?: AgentErrorType;
+  // Human-readable detail for errorType, e.g. the usage-probe message
+  // ("Codex is at 96% of its weekly limit"). Shown in handoff checkpoints.
+  errorDetail?: string;
   transcriptExcerpt: string;
 }
 

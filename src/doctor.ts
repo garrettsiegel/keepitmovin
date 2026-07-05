@@ -10,9 +10,16 @@ import {
   interactiveHealthInput,
   type ProviderHealth
 } from "./provider-health.js";
+import { readProviderUsage, resolveUsageProbe, type UsageSnapshot } from "./usage-probe.js";
 import type { CodePassConfig } from "./types.js";
 
 export type { ProviderHealth } from "./provider-health.js";
+
+export interface UsageProbeStatus {
+  name: string;
+  label: string;
+  snapshot?: UsageSnapshot;
+}
 
 export interface DoctorSummary {
   cwd: string;
@@ -24,6 +31,7 @@ export interface DoctorSummary {
   interactiveProviderHealth: ProviderHealth[];
   catalogProviderHealth: ProviderHealth[];
   readyInteractiveProviderCount: number;
+  usageProbes: UsageProbeStatus[];
 }
 
 export interface DoctorOptions {
@@ -72,6 +80,18 @@ export const runDoctor = async (
     (provider) => provider.controllable !== false
   );
 
+  // Read each probed provider's own reported usage. Never fails doctor — a
+  // missing/unreadable session file just yields an undefined snapshot.
+  const usageProbes = await Promise.all(
+    loaded.config.harness.providers
+      .filter((provider) => provider.enabled && resolveUsageProbe(provider, loaded.config))
+      .map(async (provider) => ({
+        name: provider.name,
+        label: provider.label,
+        snapshot: await readProviderUsage(provider.usageProbe!)
+      }))
+  );
+
   return {
     cwd,
     configPath: loaded.path ?? path.join(cwd, DEFAULT_CONFIG_FILE),
@@ -83,6 +103,7 @@ export const runDoctor = async (
     catalogProviderHealth,
     readyInteractiveProviderCount: controllableInteractiveProviderHealth.filter(
       (provider) => provider.enabled && provider.available
-    ).length
+    ).length,
+    usageProbes
   };
 };

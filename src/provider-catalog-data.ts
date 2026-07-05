@@ -1,4 +1,4 @@
-import type { ProviderIntegrationType } from "./types.js";
+import type { ProviderIntegrationType, UsageProbeSpec } from "./types.js";
 
 export type ProviderCatalogGroup = "harness" | "guided";
 
@@ -25,6 +25,9 @@ export interface ProviderCatalogEntry {
   // enough that they cannot appear in an agent's ordinary prose — see T3 notes in
   // src/TASK.md and failure-detection.ts:detectLiveFailure.
   limitPatterns?: string[];
+  // Local-file usage probe for this tool, if it writes readable headroom state.
+  // Codex: rollout JSONLs under ~/.codex/sessions. Claude Code has none today.
+  usageProbe?: UsageProbeSpec;
   installCommands?: ProviderCommandSpec[];
   updateCommands?: ProviderCommandSpec[];
   install: string;
@@ -90,6 +93,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "you have hit your usage limit",
       "reached your usage limit"
     ],
+    usageProbe: { kind: "codex-session-files" },
     install: "Install Codex CLI, then run `codex login`.",
     auth: "Run `codex login` or configure your OpenAI API key.",
     updateCommands: [

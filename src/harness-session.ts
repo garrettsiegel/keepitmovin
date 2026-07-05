@@ -5,6 +5,13 @@ import { detectExitFailure, detectLiveFailure, getManualSwitchSequence } from ".
 import { formatCommandEcho, renderInteractiveLaunch } from "./interactive-provider.js";
 import type { PtyFactory, PtyProcess } from "./pty-factory.js";
 import { RollingTranscript } from "./transcript.js";
+import {
+  checkUsageThreshold,
+  formatUsageProbeMessage,
+  resolveUsageProbe,
+  startUsageProbe,
+  type UsageProbeOptions
+} from "./usage-probe.js";
 
 // Runs a single provider in a PTY: mirrors stdin/stdout, watches live output for
 // failures, and resolves with an attempt log once the tool exits or CodePass
@@ -18,7 +25,8 @@ export const waitForProvider = async (
   sessionPrompt: string,
   ptyFactory: PtyFactory,
   input: NodeJS.ReadStream | undefined,
-  output: NodeJS.WriteStream | undefined
+  output: NodeJS.WriteStream | undefined,
+  usageProbeOptions?: UsageProbeOptions
 ): Promise<HarnessAttemptLog> => {
   const launch = renderInteractiveLaunch(provider, {
     cwd,
@@ -30,7 +38,30 @@ export const waitForProvider = async (
   const startedAt = new Date().toISOString();
   const manualSwitchSequence = getManualSwitchSequence(config);
   let detectedError: AgentErrorType | undefined;
+  let errorDetail: string | undefined;
   let settled = false;
+
+  const resolvedProbe = resolveUsageProbe(provider, config);
+
+  if (resolvedProbe) {
+    const snapshot = await checkUsageThreshold(resolvedProbe, usageProbeOptions);
+    if (snapshot) {
+      const detail = formatUsageProbeMessage(provider.label, snapshot, resolvedProbe.thresholdPercent);
+      output?.write(chalk.yellow(`${detail} Skipping ${provider.label}.\n`));
+      return {
+        provider: provider.name,
+        label: provider.label,
+        command: launch.command,
+        args: launch.args,
+        startedAt,
+        endedAt: new Date().toISOString(),
+        exitCode: null,
+        errorType: "rate_limit",
+        errorDetail: detail,
+        transcriptExcerpt: detail
+      };
+    }
+  }
 
   output?.write(chalk.cyan(`\nCodePass starting ${provider.label}...\n`));
   output?.write(chalk.gray(`Command: ${formatCommandEcho(launch.command, launch.args)}\n\n`));
@@ -92,6 +123,22 @@ export const waitForProvider = async (
     idleTimer = setTimeout(triggerIdleTimeout, idleTimeoutMs);
   };
 
+  let stopUsageProbe: (() => void) | undefined;
+
+  if (resolvedProbe) {
+    stopUsageProbe = startUsageProbe(resolvedProbe, usageProbeOptions, (snapshot) => {
+      if (settled) {
+        return;
+      }
+
+      detectedError = "rate_limit";
+      errorDetail = formatUsageProbeMessage(provider.label, snapshot, resolvedProbe.thresholdPercent);
+      settled = true;
+      output?.write(chalk.yellow(`\n\n${errorDetail} Pausing this tool...\n`));
+      child.kill();
+    });
+  }
+
   const onResize = (): void => {
     child.resize?.(process.stdout.columns || 80, process.stdout.rows || 24);
   };
@@ -113,6 +160,7 @@ export const waitForProvider = async (
     if (idleTimer) {
       clearTimeout(idleTimer);
     }
+    stopUsageProbe?.();
     input?.off("data", onInput);
     input?.setRawMode?.(false);
     output?.off?.("resize", onResize);
@@ -189,6 +237,7 @@ export const waitForProvider = async (
         endedAt: new Date().toISOString(),
         exitCode: event.exitCode,
         errorType,
+        errorDetail,
         transcriptExcerpt
       });
     });

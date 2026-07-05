@@ -2,7 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultConfig, initConfig, loadConfig } from "../src/config.js";
+import { codepassConfigSchema, defaultConfig, initConfig, loadConfig } from "../src/config.js";
 
 const makeRealTempDir = async (): Promise<string> => {
   const dir = path.join(os.tmpdir(), `codepass-config-${Date.now()}-${Math.random()}`);
@@ -105,6 +105,46 @@ describe("config", () => {
     await expect(stat(path.join(cwd, ".codepass", "handoffs"))).resolves.toMatchObject({
       isDirectory: expect.any(Function)
     });
+  });
+
+  it("defaults harness.usageProbe settings", () => {
+    expect(defaultConfig().harness.usageProbe).toEqual({
+      enabled: true,
+      thresholdPercent: 95,
+      pollIntervalMs: 30_000
+    });
+  });
+
+  it("accepts a per-provider usageProbe override and rejects unknown kinds", () => {
+    const config = defaultConfig();
+    const codex = config.harness.providers.find((provider) => provider.name === "codex");
+
+    if (!codex) {
+      throw new Error("missing Codex provider");
+    }
+
+    codex.usageProbe = { kind: "codex-session-files", thresholdPercent: 80 };
+    const parsed = codepassConfigSchema.parse(config);
+    const parsedCodex = parsed.harness.providers.find((provider) => provider.name === "codex");
+
+    expect(parsedCodex?.usageProbe).toEqual({ kind: "codex-session-files", thresholdPercent: 80 });
+
+    expect(() =>
+      codepassConfigSchema.parse({
+        harness: {
+          providers: [
+            {
+              name: "codex",
+              label: "Codex",
+              command: "codex",
+              args: [],
+              handoffArgs: [],
+              usageProbe: { kind: "nope" }
+            }
+          ]
+        }
+      })
+    ).toThrow();
   });
 
   it("writes a .codepass/.gitignore marker on init and is idempotent", async () => {

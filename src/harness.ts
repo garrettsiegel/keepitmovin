@@ -19,6 +19,7 @@ import { defaultPtyFactory, type PtyFactory } from "./pty-factory.js";
 import { writeSessionLog } from "./session-log.js";
 import { chooseSwitchProvider, type SwitchSelector } from "./switch-menu.js";
 import { renderCommercialBreak } from "./terminal-ui.js";
+import type { UsageProbeOptions } from "./usage-probe.js";
 
 export type { PtyFactory, PtyFactoryOptions, PtyProcess } from "./pty-factory.js";
 
@@ -30,6 +31,8 @@ export interface HarnessOptions {
   switchSelector?: SwitchSelector;
   input?: NodeJS.ReadStream;
   output?: NodeJS.WriteStream;
+  // Test-only injection: points provider usage probes at a fixture directory.
+  usageProbeOptions?: UsageProbeOptions;
 }
 
 export const runHarness = async (
@@ -78,7 +81,8 @@ export const runHarness = async (
       sessionPrompt,
       options.ptyFactory ?? defaultPtyFactory,
       options.input,
-      options.output
+      options.output,
+      options.usageProbeOptions
     );
     attempts.push(attempt);
 
@@ -102,9 +106,14 @@ export const runHarness = async (
       toProvider: selected?.provider.label,
       reason: attempt.errorType,
       transcriptExcerpt: attempt.transcriptExcerpt,
-      note: selected
-        ? "CodePass is switching tools. The next tool should read the handoff file first and continue from there."
-        : "CodePass stopped because no next tool was selected or available."
+      note: [
+        attempt.errorDetail,
+        selected
+          ? "CodePass is switching tools. The next tool should read the handoff file first and continue from there."
+          : "CodePass stopped because no next tool was selected or available."
+      ]
+        .filter(Boolean)
+        .join(" ")
     });
 
     if (!selected) {

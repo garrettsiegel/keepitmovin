@@ -5,8 +5,10 @@ import {
   getDefaultInteractiveProviders,
   getDefaultProviderOrder,
   getProviderCatalog,
-  isHarnessControllable
+  isHarnessControllable,
+  mergeCatalogInteractiveProviders
 } from "../src/provider-catalog.js";
+import type { InteractiveProviderConfig } from "../src/types.js";
 
 describe("provider catalog", () => {
   it("contains the V1 provider set: terminal harness tools plus guided OpenRouter", () => {
@@ -96,6 +98,29 @@ describe("provider catalog", () => {
     const provider = claude && catalogEntryToInteractiveProvider(claude);
 
     expect(provider?.limitPatterns).toEqual(expect.arrayContaining(["5-hour limit reached"]));
+  });
+
+  it("gives codex a session-file usage probe and leaves claude without one", () => {
+    expect(getCatalogEntry("codex")?.usageProbe).toEqual({ kind: "codex-session-files" });
+    expect(getCatalogEntry("claude")?.usageProbe).toBeUndefined();
+  });
+
+  it("threads usageProbe onto pre-existing configs via the catalog merge", () => {
+    const legacyCodex: InteractiveProviderConfig = {
+      name: "codex",
+      label: "Codex",
+      enabled: true,
+      command: "codex",
+      args: [],
+      handoffArgs: [],
+      integrationType: "pty_with_bootstrap_input"
+    };
+
+    const merged = mergeCatalogInteractiveProviders([legacyCodex]);
+
+    expect(merged.find((provider) => provider.name === "codex")?.usageProbe).toEqual({
+      kind: "codex-session-files"
+    });
   });
 
 });

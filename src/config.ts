@@ -39,6 +39,11 @@ export const providerIntegrationTypeSchema = z.enum([
 
 export const updateModeSchema = z.enum(["off", "prompt", "always"]);
 
+export const usageProbeSpecSchema = z.object({
+  kind: z.literal("codex-session-files"),
+  thresholdPercent: z.number().min(1).max(100).optional()
+});
+
 export const interactiveProviderConfigSchema = z.object({
   name: z.string().min(1),
   label: z.string().min(1),
@@ -51,7 +56,8 @@ export const interactiveProviderConfigSchema = z.object({
   handoffBootstrapInput: z.string().optional(),
   controllable: z.boolean().optional(),
   fallbackOn: z.array(agentErrorTypeSchema).optional(),
-  limitPatterns: z.array(z.string()).optional()
+  limitPatterns: z.array(z.string()).optional(),
+  usageProbe: usageProbeSpecSchema.optional()
 });
 
 export const codepassConfigSchema = z.object({
@@ -91,6 +97,13 @@ export const codepassConfigSchema = z.object({
     manualSwitchKey: z.string().default("ctrl-]"),
     idleTimeoutMs: z.number().int().min(0).default(0),
     autoAppendCheckpoints: z.boolean().default(true),
+    usageProbe: z
+      .object({
+        enabled: z.boolean().default(true),
+        thresholdPercent: z.number().min(1).max(100).default(95),
+        pollIntervalMs: z.number().int().positive().default(30_000)
+      })
+      .default({ enabled: true, thresholdPercent: 95, pollIntervalMs: 30_000 }),
     providers: z.array(interactiveProviderConfigSchema).default(getDefaultInteractiveProviders())
   }).default({
     setupComplete: false,
@@ -101,6 +114,7 @@ export const codepassConfigSchema = z.object({
     manualSwitchKey: "ctrl-]",
     idleTimeoutMs: 0,
     autoAppendCheckpoints: true,
+    usageProbe: { enabled: true, thresholdPercent: 95, pollIntervalMs: 30_000 },
     providers: getDefaultInteractiveProviders()
   })
 });

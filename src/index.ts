@@ -17,6 +17,15 @@ export { renderInteractiveLaunch } from "./interactive-provider.js";
 export { readLatestSessionLog, writeSessionLog } from "./session-log.js";
 export { applyProviderOrder, getSetupState, runSetupWizard } from "./setup.js";
 export { RollingTranscript } from "./transcript.js";
+export {
+  checkUsageThreshold,
+  formatUsageProbeMessage,
+  readCodexUsage,
+  readProviderUsage,
+  resolveUsageProbe,
+  startUsageProbe
+} from "./usage-probe.js";
+export type { ResolvedUsageProbe, UsageProbeOptions, UsageSnapshot } from "./usage-probe.js";
 export { ensureProviderFreshness } from "./updates.js";
 export { formatGitContext, getChangedFiles, getGitContext, getGitRoot, isGitRepo } from "./git.js";
 export {
@@ -34,5 +43,7 @@ export type {
   GitContext,
   ProviderIntegrationType,
   ProviderName,
-  CodePassConfig
+  CodePassConfig,
+  UsageProbeKind,
+  UsageProbeSpec
 } from "./types.js";

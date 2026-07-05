@@ -1,4 +1,4 @@
-import { mkdir, readFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
@@ -56,6 +56,39 @@ const makeTempDir = async (): Promise<string> => {
   await mkdir(dir, { recursive: true });
   return dir;
 };
+
+// Codex usage-probe fixture helpers (mirror of test/usage-probe.test.ts).
+const dayDir = (baseDir: string, date: Date): string =>
+  path.join(
+    baseDir,
+    "sessions",
+    String(date.getFullYear()),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  );
+
+const writeRollout = async (
+  baseDir: string,
+  date: Date,
+  fileName: string,
+  lines: string[]
+): Promise<void> => {
+  await mkdir(dayDir(baseDir, date), { recursive: true });
+  await writeFile(path.join(dayDir(baseDir, date), fileName), `${lines.join("\n")}\n`, "utf8");
+};
+
+const rateLimitLine = (primary: number, secondary: number): string =>
+  JSON.stringify({
+    timestamp: "2025-09-27T07:27:21.415Z",
+    type: "event_msg",
+    payload: {
+      type: "token_count",
+      rate_limits: {
+        primary: { used_percent: primary, window_minutes: 299, resets_in_seconds: 17_940 },
+        secondary: { used_percent: secondary, window_minutes: 10_079, resets_in_seconds: 351_406 }
+      }
+    }
+  });
 
 describe("runHarness", () => {
   it("falls back from a fake Claude rate limit to fake Codex with a handoff", async () => {
@@ -765,5 +798,241 @@ describe("runHarness", () => {
     expect(summary.attempts).toHaveLength(1);
     expect(summary.attempts[0]?.errorType).toBeUndefined();
     expect(launches).toEqual(["fake-claude"]);
+  });
+
+  it("switches when the usage probe sees codex cross its limit threshold", async () => {
+    const cwd = await makeTempDir();
+    const probeDir = await makeTempDir();
+    const now = new Date();
+    await writeRollout(probeDir, now, "rollout-a.jsonl", [rateLimitLine(10, 50)]); // under threshold at launch
+
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.usageProbe.pollIntervalMs = 10;
+    config.harness.providerOrder = ["codex", "claude"];
+    config.harness.providers = [
+      {
+        name: "codex",
+        label: "Codex",
+        enabled: true,
+        command: "fake-codex",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty",
+        usageProbe: { kind: "codex-session-files" }
+      },
+      {
+        name: "claude",
+        label: "Claude Code",
+        enabled: true,
+        command: "fake-claude",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty"
+      }
+    ];
+
+    const ptyFactory: PtyFactory = (command) => {
+      if (command === "fake-codex") {
+        // After launch, codex's own session file reports 97% weekly usage.
+        setTimeout(() => {
+          void appendFile(
+            path.join(dayDir(probeDir, now), "rollout-a.jsonl"),
+            `${rateLimitLine(12, 97)}\n`,
+            "utf8"
+          );
+        }, 15);
+        return new FakePty({ data: "working normally", exitCode: 1, waitForKill: true });
+      }
+      return new FakePty({ data: "continued", exitCode: 0 });
+    };
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      usageProbeOptions: { baseDir: probeDir, now: () => now },
+      switchSelector: async (choices) => choices.find((choice) => choice.provider.name === "claude"),
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.attempts[0]?.errorType).toBe("rate_limit");
+    expect(summary.attempts[0]?.errorDetail).toContain("97% of its weekly limit");
+    expect(summary.finalProvider).toBe("claude");
+    const handoff = await readFile(path.join(cwd, ".codepass", "current", "handoff.md"), "utf8");
+    expect(handoff).toContain("Reason: rate_limit");
+    expect(handoff).toContain("97% of its weekly limit");
+  });
+
+  it("never fires the probe for a provider without usageProbe configured", async () => {
+    const cwd = await makeTempDir();
+    const probeDir = await makeTempDir();
+    const now = new Date();
+    await writeRollout(probeDir, now, "rollout-a.jsonl", [rateLimitLine(100, 100)]);
+
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.usageProbe.pollIntervalMs = 5;
+    config.harness.idleTimeoutMs = 50;
+    config.harness.providerOrder = ["codex"];
+    config.harness.providers = [
+      {
+        name: "codex",
+        label: "Codex",
+        enabled: true,
+        command: "fake-codex",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty"
+      }
+    ];
+
+    const ptyFactory: PtyFactory = () => new FakePty({ data: "working", exitCode: 1, waitForKill: true });
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      usageProbeOptions: { baseDir: probeDir, now: () => now },
+      switchSelector: async () => undefined,
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.attempts[0]?.errorType).toBe("timeout");
+    expect(summary.attempts[0]?.errorDetail).toBeUndefined();
+  });
+
+  it("respects fallbackOn: a probed provider that excludes rate_limit never probes", async () => {
+    const cwd = await makeTempDir();
+    const probeDir = await makeTempDir();
+    const now = new Date();
+    await writeRollout(probeDir, now, "rollout-a.jsonl", [rateLimitLine(100, 100)]);
+
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.usageProbe.pollIntervalMs = 5;
+    config.harness.idleTimeoutMs = 50;
+    config.harness.providerOrder = ["codex"];
+    config.harness.providers = [
+      {
+        name: "codex",
+        label: "Codex",
+        enabled: true,
+        command: "fake-codex",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty",
+        usageProbe: { kind: "codex-session-files" },
+        fallbackOn: ["timeout"]
+      }
+    ];
+
+    const ptyFactory: PtyFactory = () => new FakePty({ data: "working", exitCode: 1, waitForKill: true });
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      usageProbeOptions: { baseDir: probeDir, now: () => now },
+      switchSelector: async () => undefined,
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.attempts[0]?.errorType).toBe("timeout");
+  });
+
+  it("skips launching a provider that is already over its limit at start", async () => {
+    const cwd = await makeTempDir();
+    const probeDir = await makeTempDir();
+    const now = new Date();
+    await writeRollout(probeDir, now, "rollout-a.jsonl", [rateLimitLine(97, 40)]);
+
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.providerOrder = ["codex", "claude"];
+    config.harness.providers = [
+      {
+        name: "codex",
+        label: "Codex",
+        enabled: true,
+        command: "fake-codex",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty",
+        usageProbe: { kind: "codex-session-files" }
+      },
+      {
+        name: "claude",
+        label: "Claude Code",
+        enabled: true,
+        command: "fake-claude",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty"
+      }
+    ];
+
+    const launches: string[] = [];
+    const ptyFactory: PtyFactory = (command) => {
+      launches.push(command);
+      return new FakePty({ data: "continued", exitCode: 0 });
+    };
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      usageProbeOptions: { baseDir: probeDir, now: () => now },
+      switchSelector: async (choices) => choices.find((choice) => choice.provider.name === "claude"),
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.attempts[0]?.errorType).toBe("rate_limit");
+    expect(summary.attempts[0]?.exitCode).toBeNull();
+    expect(launches).not.toContain("fake-codex");
+    expect(launches).toEqual(["fake-claude"]);
+    expect(summary.finalProvider).toBe("claude");
+  });
+
+  it("launches a probed provider under its (per-provider) threshold", async () => {
+    const cwd = await makeTempDir();
+    const probeDir = await makeTempDir();
+    const now = new Date();
+    await writeRollout(probeDir, now, "rollout-a.jsonl", [rateLimitLine(50, 50)]);
+
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.providerOrder = ["codex"];
+    config.harness.providers = [
+      {
+        name: "codex",
+        label: "Codex",
+        enabled: true,
+        command: "fake-codex",
+        args: ["{{sessionPrompt}}"],
+        handoffArgs: ["{{handoffPrompt}}"],
+        integrationType: "pty",
+        usageProbe: { kind: "codex-session-files", thresholdPercent: 99 }
+      }
+    ];
+
+    const launches: string[] = [];
+    const ptyFactory: PtyFactory = (command) => {
+      launches.push(command);
+      return new FakePty({ data: "done", exitCode: 0 });
+    };
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      usageProbeOptions: { baseDir: probeDir, now: () => now },
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(launches).toEqual(["fake-codex"]);
+    expect(summary.attempts).toHaveLength(1);
+    expect(summary.attempts[0]?.errorType).toBeUndefined();
+    expect(summary.success).toBe(true);
   });
 });

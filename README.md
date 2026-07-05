@@ -82,8 +82,8 @@ extra AI calls to do this, so it costs you nothing beyond what the tool would al
    like running that tool directly.
 4. CodePass creates `.codepass/current/handoff.md` and tells the active tool to keep it updated.
 5. Your terminal input/output is mirrored straight through, so the tool stays fully interactive.
-6. If output looks like a rate limit, quota issue, auth failure, or another recognizable failure,
-   CodePass pauses that tool.
+6. If output looks like a rate limit, quota issue, auth failure, or another recognizable failure —
+   or a usage probe reports the tool is near its limit (see below) — CodePass pauses that tool.
 7. CodePass appends a checkpoint to the handoff file, shows a short "commercial break" message
    explaining what happened, and launches the next tool with the handoff already loaded.
 8. CodePass writes a session summary and archives the handoff for the record.
@@ -96,6 +96,32 @@ Ctrl+]
 
 Press this while a tool is running to ask CodePass to switch tools right now — useful if you just
 want a different tool's take on something, not only when a limit hits.
+
+### Usage Probes
+
+Keyword detection only reacts *after* a tool prints a limit banner. When a tool records its own
+remaining usage on disk, CodePass can read it and switch *before* the wall — a **usage probe**.
+
+Today only **Codex** exposes this: it writes rolling session files under
+`~/.codex/sessions/YYYY/MM/DD/` that include its current 5-hour and weekly usage percentages.
+CodePass checks the newest of these once before launching Codex (skipping it if it's already
+exhausted) and periodically while it runs. Claude Code has no equivalent local usage file today, so
+it relies on keyword detection.
+
+Probes are read-only and fail safe: if a session file is missing, unreadable, or in an unexpected
+shape, the probe simply reports nothing and keyword detection still covers that session.
+
+Configure it under `harness.usageProbe` in `codepass.config.json`:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Master switch for all usage probes. |
+| `thresholdPercent` | `95` | Switch when a tool's highest usage window reaches this percent. |
+| `pollIntervalMs` | `30000` | How often to re-check while a tool runs. |
+
+A single provider can override the threshold with a per-provider
+`usageProbe.thresholdPercent` (e.g. set Codex to `80` to switch earlier). Run `codepass doctor` to
+see each probed provider's current 5-hour / weekly usage.
 
 ## Provider Catalog
 

@@ -47,7 +47,8 @@ export const catalogEntryToInteractiveProvider = (
     bootstrapInput: entry.bootstrapInput,
     handoffBootstrapInput: entry.handoffBootstrapInput,
     controllable: entry.controllable,
-    limitPatterns: entry.limitPatterns
+    limitPatterns: entry.limitPatterns,
+    usageProbe: entry.usageProbe
   };
 };
 
@@ -84,7 +85,8 @@ export const mergeCatalogInteractiveProviders = (
         bootstrapInput: catalogProvider.bootstrapInput,
         handoffBootstrapInput: catalogProvider.handoffBootstrapInput,
         controllable: catalogProvider.controllable,
-        limitPatterns: catalogProvider.limitPatterns
+        limitPatterns: catalogProvider.limitPatterns,
+        usageProbe: catalogProvider.usageProbe
       };
     }
 

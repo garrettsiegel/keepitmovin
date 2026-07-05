@@ -53,6 +53,29 @@ export const runDoctorCommand = async (options: CliOptions): Promise<void> => {
       }
     }
 
+    if (summary.usageProbes.length > 0) {
+      console.log("");
+      console.log(chalk.bold("Usage probes:"));
+      for (const probe of summary.usageProbes) {
+        if (!probe.snapshot) {
+          console.log(chalk.gray(`- ${probe.label}: no recent session data found`));
+          continue;
+        }
+
+        const { snapshot } = probe;
+        const parts: string[] = [];
+        if (snapshot.primaryUsedPercent !== undefined) {
+          parts.push(`5-hour ${Math.round(snapshot.primaryUsedPercent)}%`);
+        }
+        if (snapshot.secondaryUsedPercent !== undefined) {
+          parts.push(`weekly ${Math.round(snapshot.secondaryUsedPercent)}%`);
+        }
+        console.log(
+          chalk.gray(`- ${probe.label}: ${parts.join(" / ")} (source: ${snapshot.sourceFile})`)
+        );
+      }
+    }
+
     console.log("");
     if (summary.readyInteractiveProviderCount > 0) {
       console.log(chalk.green(`Ready harness providers: ${summary.readyInteractiveProviderCount}`));
