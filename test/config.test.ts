@@ -115,6 +115,19 @@ describe("config", () => {
     });
   });
 
+  it("defaults harness.handoffRefresh settings", () => {
+    expect(defaultConfig().harness.handoffRefresh).toEqual({
+      enabled: true,
+      intervalMs: 60_000,
+      nudge: {
+        enabled: true,
+        staleAfterMs: 300_000,
+        idleForMs: 10_000,
+        minTranscriptGrowthChars: 2_000
+      }
+    });
+  });
+
   it("accepts a per-provider usageProbe override and rejects unknown kinds", () => {
     const config = defaultConfig();
     const codex = config.harness.providers.find((provider) => provider.name === "codex");

@@ -1,16 +1,21 @@
-import { mkdir, readFile, readdir, rm, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { AgentErrorType, InteractiveProviderConfig, CodePassConfig } from "./types.js";
-import { formatGitContext, getChangedFiles, getGitContext, getGitRoot } from "./git.js";
-import { isSafeToRecursivelyDelete, resolveFromCwd } from "./paths.js";
+import { formatGitSnapshot, getChangedFiles, getGitContext } from "./git.js";
+import { getHandoffPaths } from "./handoff-artifacts.js";
+import {
+  appendSwitchHistoryLine,
+  refreshHandoffFile,
+  replaceSection,
+  SWITCH_HISTORY_LIMIT,
+  TRANSCRIPT_EXCERPT_LIMIT
+} from "./handoff-refresh.js";
 import { ensureArtifactsIgnored } from "./artifacts.js";
 import { DEFAULT_CODEPASS_DIR } from "./config.js";
 import { redactSecrets } from "./redact.js";
 
-export interface HandoffPaths {
-  livePath: string;
-  archiveDir: string;
-}
+export { buildProviderHandoffPrompt, buildSessionPrompt } from "./handoff-prompts.js";
+export { clearHandoffArtifacts, getHandoffPaths, type HandoffPaths } from "./handoff-artifacts.js";
 
 export interface HandoffCheckpoint {
   type: "session_start" | "tool_switch" | "session_end";
@@ -21,47 +26,6 @@ export interface HandoffCheckpoint {
   transcriptExcerpt?: string;
   note?: string;
 }
-
-export const getHandoffPaths = (cwd: string, config: CodePassConfig): HandoffPaths => ({
-  livePath: resolveFromCwd(cwd, config.harness.handoffPath),
-  archiveDir: resolveFromCwd(cwd, config.harness.handoffArchiveDir)
-});
-
-export const buildSessionPrompt = (
-  handoffPath: string,
-  providerChain: InteractiveProviderConfig[]
-): string => [
-  "You are running inside CodePass, a harness that can switch coding tools when limits happen.",
-  "",
-  `Keep this shared handoff file updated as you work: ${handoffPath}`,
-  "",
-  "The handoff file is the continuity layer for the next tool. Update it whenever the goal, plan, changed files, commands run, blockers, or next steps change.",
-  "",
-  "Revise the Current Goal, Working State, Changed Files, Commands And Checks, Blockers, and Next Step sections in place — overwrite stale content, don't append a running log. Keep the whole file under ~150 lines: summarize, don't transcribe.",
-  "",
-  `Provider chain: ${providerChain.map((provider) => provider.label).join(" -> ")}`,
-  "",
-  "Do not wait until the end. Keep the handoff useful for another coding agent at any moment."
-].join("\n");
-
-export const buildProviderHandoffPrompt = (
-  handoffPath: string,
-  fromProvider: string,
-  toProvider: string,
-  reason?: AgentErrorType
-): string => [
-  "You are continuing a CodePass coding session.",
-  "",
-  `Read this handoff file first: ${handoffPath}`,
-  "",
-  `Previous tool: ${fromProvider}`,
-  `Current tool: ${toProvider}`,
-  `Switch reason: ${reason ?? "unknown"}`,
-  "",
-  "CodePass cannot transfer private chat state. The handoff file is the shared continuity layer.",
-  "After reading it, continue the work and keep the handoff file updated as you go.",
-  "Revise sections in place rather than appending — keep the file under ~150 lines."
-].join("\n");
 
 export const createHandoffFile = async (
   cwd: string,
@@ -79,6 +43,8 @@ export const createHandoffFile = async (
     "# CodePass Handoff",
     "",
     "This file is shared by every tool in the current CodePass session.",
+    "CodePass automatically maintains: Changed Files, Repository Snapshot, Switch History,",
+    "and Latest Transcript Excerpt. Write your notes in the other sections only.",
     "",
     "## Current Goal",
     "",
@@ -87,10 +53,6 @@ export const createHandoffFile = async (
     "## Working State",
     "",
     "- Session just started.",
-    "",
-    "## Changed Files",
-    "",
-    "- None recorded yet.",
     "",
     "## Commands And Checks",
     "",
@@ -104,20 +66,25 @@ export const createHandoffFile = async (
     "",
     "- Start by understanding the user's request and current repository state.",
     "",
-    "## CodePass Checkpoints",
+    "## Changed Files",
     "",
-    `### Session started - ${startedAt}`,
+    changedFiles.length > 0 ? changedFiles.map((file) => `- ${file}`).join("\n") : "- None.",
     "",
-    `- Working directory: ${cwd}`,
-    `- Provider chain: ${providerChain.map((provider) => provider.label).join(" -> ")}`,
-    `- Changed files: ${changedFiles.length > 0 ? changedFiles.join(", ") : "none"}`,
-    "- CodePass note: Keep this file updated as the work evolves.",
+    "## Repository Snapshot",
     "",
-    "Repository snapshot:",
+    `Last refreshed: ${startedAt}`,
     "",
     "```txt",
-    redactSecrets(formatGitContext(gitContext)),
+    redactSecrets(formatGitSnapshot(gitContext)),
     "```",
+    "",
+    "## Switch History",
+    "",
+    `- ${startedAt} — Session started (${providerChain.map((provider) => provider.label).join(" → ")}) — cwd: ${cwd}`,
+    "",
+    "## Latest Transcript Excerpt",
+    "",
+    "- None yet.",
     ""
   ].join("\n");
   await writeFile(paths.livePath, content, "utf8");
@@ -134,45 +101,33 @@ export const appendHandoffCheckpoint = async (
   }
 
   const paths = getHandoffPaths(cwd, config);
-  await mkdir(path.dirname(paths.livePath), { recursive: true });
   const timestamp = checkpoint.timestamp ?? new Date().toISOString();
-  const gitContext = await getGitContext(cwd, config.context.maxDiffChars);
-  const changedFiles = await getChangedFiles(cwd);
-  const heading =
-    checkpoint.type === "session_start"
-      ? "Session checkpoint"
-      : checkpoint.type === "tool_switch"
-        ? "Tool switch"
-        : "Session ended";
-  const block = [
-    "",
-    `### ${heading} - ${timestamp}`,
-    "",
-    checkpoint.fromProvider ? `- From: ${checkpoint.fromProvider}` : undefined,
-    checkpoint.toProvider ? `- To: ${checkpoint.toProvider}` : undefined,
-    checkpoint.reason ? `- Reason: ${checkpoint.reason}` : undefined,
-    checkpoint.note ? `- Note: ${checkpoint.note}` : undefined,
-    `- Changed files: ${changedFiles.length > 0 ? changedFiles.join(", ") : "none"}`,
-    "",
-    "Repository snapshot:",
-    "",
-    "```txt",
-    redactSecrets(formatGitContext(gitContext)),
-    "```",
-    checkpoint.transcriptExcerpt
-      ? [
-          "",
-          "Recent transcript excerpt:",
-          "",
-          "```txt",
-          redactSecrets(checkpoint.transcriptExcerpt),
-          "```"
-        ].join("\n")
-      : undefined,
-    ""
-  ].filter((line): line is string => line !== undefined).join("\n");
+  let content: string;
+  try {
+    content = await readFile(paths.livePath, "utf8");
+  } catch {
+    return; // No live handoff — nothing to checkpoint into.
+  }
 
-  await writeFile(paths.livePath, block, { encoding: "utf8", flag: "a" });
+  const note = checkpoint.note ? checkpoint.note.slice(0, 300) : undefined;
+  const line =
+    checkpoint.type === "tool_switch"
+      ? `- ${timestamp} — ${checkpoint.fromProvider ?? "?"} → ${checkpoint.toProvider ?? "(none)"} — Reason: ${checkpoint.reason ?? "unknown"}${note ? ` — ${note}` : ""}`
+      : `- ${timestamp} — ${checkpoint.type === "session_end" ? "Session ended" : "Checkpoint"}${checkpoint.fromProvider ? ` (${checkpoint.fromProvider})` : ""}${note ? ` — ${note}` : ""}`;
+
+  content = appendSwitchHistoryLine(content, line, SWITCH_HISTORY_LIMIT);
+
+  if (checkpoint.transcriptExcerpt) {
+    const excerpt = redactSecrets(checkpoint.transcriptExcerpt).slice(-TRANSCRIPT_EXCERPT_LIMIT);
+    content = replaceSection(
+      content,
+      "Latest Transcript Excerpt",
+      ["```txt", excerpt, "```"].join("\n")
+    );
+  }
+
+  await writeFile(paths.livePath, content, "utf8");
+  await refreshHandoffFile(cwd, config, paths.livePath);
 };
 
 export const archiveHandoffFile = async (
@@ -217,81 +172,3 @@ export const summarizeHandoffFile = async (
   }
 };
 
-// Deletes only files matching `extension` (plus an optional exact file) inside
-// `dir`, leaving the directory itself in place. Used as the safe fallback when a
-// misconfigured artifact path resolves somewhere `rm -rf` must not touch.
-const removeKnownFiles = async (
-  dir: string,
-  extension: string,
-  extraFile?: string
-): Promise<boolean> => {
-  let removedAny = false;
-
-  if (extraFile) {
-    try {
-      await unlink(extraFile);
-      removedAny = true;
-    } catch {
-      // Nothing to remove.
-    }
-  }
-
-  try {
-    const entries = await readdir(dir);
-    for (const entry of entries) {
-      if (entry.endsWith(extension)) {
-        await unlink(path.join(dir, entry)).catch(() => {});
-        removedAny = true;
-      }
-    }
-  } catch {
-    // Directory missing — nothing to remove.
-  }
-
-  return removedAny;
-};
-
-export const clearHandoffArtifacts = async (
-  cwd: string,
-  config: CodePassConfig
-): Promise<string[]> => {
-  const paths = getHandoffPaths(cwd, config);
-  const sessionsDir = resolveFromCwd(cwd, config.logs.sessionsDir);
-  const gitRoot = await getGitRoot(cwd);
-  const removed: string[] = [];
-
-  // dir → the exact file / extension we may delete if the dir itself is unsafe
-  // to recurse into.
-  const candidates: Array<{ dir: string; extension: string; extraFile?: string }> = [
-    { dir: path.dirname(paths.livePath), extension: ".md", extraFile: paths.livePath },
-    { dir: paths.archiveDir, extension: ".md" },
-    { dir: sessionsDir, extension: ".json" }
-  ];
-
-  for (const candidate of candidates) {
-    if (isSafeToRecursivelyDelete(candidate.dir, cwd, { gitRoot: gitRoot ?? undefined })) {
-      try {
-        const entries = await readdir(candidate.dir);
-        await rm(candidate.dir, { recursive: true, force: true });
-        if (entries.length > 0) {
-          removed.push(candidate.dir);
-        }
-      } catch {
-        // Nothing to clear.
-      }
-      continue;
-    }
-
-    // Unsafe to recurse (e.g. handoffPath dirname resolved to the cwd or home).
-    // Delete only the specific known artifact files and keep the directory.
-    console.warn(
-      `CodePass: ${candidate.dir} is not a dedicated .codepass directory; ` +
-        `removing only known artifact files instead of the whole directory.`
-    );
-    if (await removeKnownFiles(candidate.dir, candidate.extension, candidate.extraFile)) {
-      removed.push(candidate.dir);
-    }
-  }
-
-  return removed;
-};

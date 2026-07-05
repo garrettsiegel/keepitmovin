@@ -5,13 +5,8 @@ import { detectExitFailure, detectLiveFailure, getManualSwitchSequence } from ".
 import { formatCommandEcho, renderInteractiveLaunch } from "./interactive-provider.js";
 import type { PtyFactory, PtyProcess } from "./pty-factory.js";
 import { RollingTranscript } from "./transcript.js";
-import {
-  checkUsageThreshold,
-  formatUsageProbeMessage,
-  resolveUsageProbe,
-  startUsageProbe,
-  type UsageProbeOptions
-} from "./usage-probe.js";
+import { armSessionWatchers, preLaunchUsageGate } from "./harness-watchers.js";
+import { formatUsageProbeMessage, resolveUsageProbe, type UsageProbeOptions } from "./usage-probe.js";
 
 // Runs a single provider in a PTY: mirrors stdin/stdout, watches live output for
 // failures, and resolves with an attempt log once the tool exits or CodePass
@@ -40,27 +35,20 @@ export const waitForProvider = async (
   let detectedError: AgentErrorType | undefined;
   let errorDetail: string | undefined;
   let settled = false;
+  let lastActivityAt = Date.now();
 
   const resolvedProbe = resolveUsageProbe(provider, config);
-
-  if (resolvedProbe) {
-    const snapshot = await checkUsageThreshold(resolvedProbe, usageProbeOptions);
-    if (snapshot) {
-      const detail = formatUsageProbeMessage(provider.label, snapshot, resolvedProbe.thresholdPercent);
-      output?.write(chalk.yellow(`${detail} Skipping ${provider.label}.\n`));
-      return {
-        provider: provider.name,
-        label: provider.label,
-        command: launch.command,
-        args: launch.args,
-        startedAt,
-        endedAt: new Date().toISOString(),
-        exitCode: null,
-        errorType: "rate_limit",
-        errorDetail: detail,
-        transcriptExcerpt: detail
-      };
-    }
+  const gated = await preLaunchUsageGate({
+    provider,
+    resolvedProbe,
+    usageProbeOptions,
+    command: launch.command,
+    commandArgs: launch.args,
+    startedAt,
+    output
+  });
+  if (gated) {
+    return gated;
   }
 
   output?.write(chalk.cyan(`\nCodePass starting ${provider.label}...\n`));
@@ -123,11 +111,19 @@ export const waitForProvider = async (
     idleTimer = setTimeout(triggerIdleTimeout, idleTimeoutMs);
   };
 
-  let stopUsageProbe: (() => void) | undefined;
-
-  if (resolvedProbe) {
-    stopUsageProbe = startUsageProbe(resolvedProbe, usageProbeOptions, (snapshot) => {
-      if (settled) {
+  const stopWatchers = armSessionWatchers({
+    provider,
+    config,
+    cwd,
+    handoffPath,
+    resolvedProbe,
+    usageProbeOptions,
+    transcriptLength: () => transcript.text().length,
+    lastActivityAt: () => lastActivityAt,
+    isSettled: () => settled,
+    writeToChild: (text) => child.write(text),
+    onUsageLimit: (snapshot) => {
+      if (settled || !resolvedProbe) {
         return;
       }
 
@@ -136,8 +132,8 @@ export const waitForProvider = async (
       settled = true;
       output?.write(chalk.yellow(`\n\n${errorDetail} Pausing this tool...\n`));
       child.kill();
-    });
-  }
+    }
+  });
 
   const onResize = (): void => {
     child.resize?.(process.stdout.columns || 80, process.stdout.rows || 24);
@@ -160,7 +156,7 @@ export const waitForProvider = async (
     if (idleTimer) {
       clearTimeout(idleTimer);
     }
-    stopUsageProbe?.();
+    stopWatchers();
     input?.off("data", onInput);
     input?.setRawMode?.(false);
     output?.off?.("resize", onResize);
@@ -169,6 +165,7 @@ export const waitForProvider = async (
   };
 
   function onInput(chunk: Buffer): void {
+    lastActivityAt = Date.now();
     armIdleTimer();
 
     if (chunk.toString("utf8").includes(manualSwitchSequence)) {
@@ -192,6 +189,7 @@ export const waitForProvider = async (
 
   return new Promise((resolve) => {
     child.onData((data) => {
+      lastActivityAt = Date.now();
       transcript.append(data);
       output?.write(data);
       armIdleTimer();

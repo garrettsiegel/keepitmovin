@@ -107,3 +107,25 @@ export const formatGitContext = (context: GitContext): string => {
     context.recentDiff || "(no diff)"
   ].join("\n");
 };
+
+// Lean snapshot for the handoff file: no raw diff. The next agent works in the
+// same repo and can run `git diff` itself; the handoff carries narrative, not
+// transcripts of the diff.
+export const formatGitSnapshot = (context: GitContext): string => {
+  if (!context.isGitRepo) {
+    return "No git repository detected.";
+  }
+
+  return [
+    `Git root: ${context.root ?? "unknown"}`,
+    "",
+    "git status --short:",
+    context.statusShort || "(clean)",
+    "",
+    "git diff --stat:",
+    context.diffStat || "(no unstaged diff)",
+    "",
+    "git diff --name-only:",
+    context.diffNameOnly || "(no changed tracked files)"
+  ].join("\n");
+};

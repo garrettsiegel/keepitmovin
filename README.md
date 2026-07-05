@@ -123,6 +123,33 @@ A single provider can override the threshold with a per-provider
 `usageProbe.thresholdPercent` (e.g. set Codex to `80` to switch earlier). Run `codepass doctor` to
 see each probed provider's current 5-hour / weekly usage.
 
+### The Handoff File
+
+`.codepass/current/handoff.md` is the shared continuity layer between tools. Each tool owns the
+narrative sections (Current Goal, Working State, Commands And Checks, Blockers, Next Step) and is
+asked to keep them current as it works. CodePass maintains the rest:
+
+- **Mechanical sections stay fresh automatically.** While a tool runs, CodePass rewrites the
+  Changed Files and Repository Snapshot sections on a timer, so those are accurate even if the tool
+  never updates them.
+- **It stays lean.** Raw `git diff` output is never stored (run `git diff` yourself for the
+  details); tool switches are one-line entries in a Switch History that's trimmed to the last 10;
+  and only the most recent transcript excerpt is kept.
+- **Stale-handoff nudge.** If the narrative sections go stale while the tool is clearly still
+  working, CodePass types a short, visible reminder into the tool asking it to update the handoff.
+  It only fires when the tool is idle, and never more than once per staleness window.
+
+Configure it under `harness.handoffRefresh` in `codepass.config.json`:
+
+| Field | Default | Meaning |
+|---|---|---|
+| `enabled` | `true` | Master switch for the whole refresh/nudge system. |
+| `intervalMs` | `60000` | How often CodePass refreshes the mechanical sections and checks for staleness. |
+| `nudge.enabled` | `true` | Whether to type the stale-handoff reminder into the tool. Set `false` to disable nudges. |
+| `nudge.staleAfterMs` | `300000` | How long the narrative can go unchanged before it's considered stale. |
+| `nudge.idleForMs` | `10000` | The tool must be idle at least this long before a nudge is sent. |
+| `nudge.minTranscriptGrowthChars` | `2000` | How much output the tool must produce before a nudge is warranted. |
+
 ## Provider Catalog
 
 CodePass has a built-in catalog of tools with two kinds of integrations:

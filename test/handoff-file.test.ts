@@ -56,6 +56,61 @@ describe("handoff file helpers", () => {
     await expect(stat(livePath)).rejects.toThrow();
   });
 
+  it("keeps a lean format: one snapshot, no raw diff, trimmed switch history", async () => {
+    const cwd = await makeTempDir();
+    const config = defaultConfig();
+    const providers = config.harness.providers.filter((provider) => provider.name !== "cline");
+    const livePath = await createHandoffFile(cwd, config, providers, "2026-07-05T00:00:00.000Z");
+
+    await appendHandoffCheckpoint(cwd, config, {
+      type: "tool_switch",
+      fromProvider: "Claude Code",
+      toProvider: "Codex",
+      reason: "rate_limit",
+      transcriptExcerpt: "first excerpt text"
+    });
+    await appendHandoffCheckpoint(cwd, config, {
+      type: "tool_switch",
+      fromProvider: "Codex",
+      toProvider: "Claude Code",
+      reason: "timeout",
+      transcriptExcerpt: "second excerpt text"
+    });
+
+    const content = await readFile(livePath, "utf8");
+    // Exactly one in-place snapshot section, and no embedded raw diff.
+    expect(content.match(/## Repository Snapshot/g)).toHaveLength(1);
+    expect(content).not.toContain("Recent diff:");
+    // Latest transcript excerpt is replaced in place, not appended.
+    expect(content).toContain("second excerpt text");
+    expect(content).not.toContain("first excerpt text");
+
+    // Switch history trims to the newest SWITCH_HISTORY_LIMIT (10) entries.
+    for (let index = 0; index < 12; index += 1) {
+      await appendHandoffCheckpoint(cwd, config, {
+        type: "tool_switch",
+        fromProvider: "Claude Code",
+        toProvider: "Codex",
+        reason: "rate_limit",
+        note: `switch ${index}`
+      });
+    }
+    const afterMany = await readFile(livePath, "utf8");
+    const historyBody = afterMany.slice(afterMany.indexOf("## Switch History"));
+    const entries = historyBody.split("\n").filter((line) => line.startsWith("- "));
+    expect(entries).toHaveLength(10);
+    expect(afterMany).not.toContain("Session started");
+  });
+
+  it("no-ops when appending a checkpoint with no live handoff file", async () => {
+    const cwd = await makeTempDir();
+    const config = defaultConfig();
+    await expect(
+      appendHandoffCheckpoint(cwd, config, { type: "tool_switch", fromProvider: "A", toProvider: "B" })
+    ).resolves.toBeUndefined();
+    await expect(stat(getHandoffPaths(cwd, config).livePath)).rejects.toThrow();
+  });
+
   it("removes only the handoff file when handoffPath resolves to the cwd", async () => {
     const cwd = await makeTempDir();
     const config = defaultConfig();

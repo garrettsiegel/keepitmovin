@@ -18,6 +18,12 @@ export { readLatestSessionLog, writeSessionLog } from "./session-log.js";
 export { applyProviderOrder, getSetupState, runSetupWizard } from "./setup.js";
 export { RollingTranscript } from "./transcript.js";
 export {
+  buildNudgeMessage,
+  refreshHandoffFile,
+  replaceSection,
+  startHandoffWatcher
+} from "./handoff-refresh.js";
+export {
   checkUsageThreshold,
   formatUsageProbeMessage,
   readCodexUsage,

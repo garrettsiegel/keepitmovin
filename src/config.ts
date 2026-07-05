@@ -104,6 +104,34 @@ export const codepassConfigSchema = z.object({
         pollIntervalMs: z.number().int().positive().default(30_000)
       })
       .default({ enabled: true, thresholdPercent: 95, pollIntervalMs: 30_000 }),
+    handoffRefresh: z
+      .object({
+        enabled: z.boolean().default(true),
+        intervalMs: z.number().int().min(1_000).default(60_000),
+        nudge: z
+          .object({
+            enabled: z.boolean().default(true),
+            staleAfterMs: z.number().int().positive().default(300_000),
+            idleForMs: z.number().int().positive().default(10_000),
+            minTranscriptGrowthChars: z.number().int().positive().default(2_000)
+          })
+          .default({
+            enabled: true,
+            staleAfterMs: 300_000,
+            idleForMs: 10_000,
+            minTranscriptGrowthChars: 2_000
+          })
+      })
+      .default({
+        enabled: true,
+        intervalMs: 60_000,
+        nudge: {
+          enabled: true,
+          staleAfterMs: 300_000,
+          idleForMs: 10_000,
+          minTranscriptGrowthChars: 2_000
+        }
+      }),
     providers: z.array(interactiveProviderConfigSchema).default(getDefaultInteractiveProviders())
   }).default({
     setupComplete: false,
@@ -115,6 +143,16 @@ export const codepassConfigSchema = z.object({
     idleTimeoutMs: 0,
     autoAppendCheckpoints: true,
     usageProbe: { enabled: true, thresholdPercent: 95, pollIntervalMs: 30_000 },
+    handoffRefresh: {
+      enabled: true,
+      intervalMs: 60_000,
+      nudge: {
+        enabled: true,
+        staleAfterMs: 300_000,
+        idleForMs: 10_000,
+        minTranscriptGrowthChars: 2_000
+      }
+    },
     providers: getDefaultInteractiveProviders()
   })
 });
