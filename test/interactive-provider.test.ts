@@ -58,11 +58,14 @@ describe("renderInteractiveLaunch", () => {
         args: [],
         handoffArgs: [],
         integrationType: "pty_with_bootstrap_input",
-        bootstrapInput: "{{sessionPrompt}}\n",
-        handoffBootstrapInput: "{{handoffPrompt}}\n"
+        bootstrapInput:
+          "Read the CodePass handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        handoffBootstrapInput:
+          "Read the CodePass handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n"
       },
       {
         cwd: "/tmp/project",
+        handoffPath: "/tmp/project/.codepass/current/handoff.md",
         handoffPrompt: "read the handoff and continue"
       }
     );
@@ -70,7 +73,8 @@ describe("renderInteractiveLaunch", () => {
     expect(launch).toEqual({
       command: "aider",
       args: [],
-      bootstrapInput: "read the handoff and continue\n"
+      bootstrapInput:
+        "Read the CodePass handoff at /tmp/project/.codepass/current/handoff.md first, then continue from where the previous tool left off.\n"
     });
   });
 });

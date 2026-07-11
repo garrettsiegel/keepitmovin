@@ -48,6 +48,18 @@ describe("classifyError", () => {
 
   it("detects auth failures", () => {
     expect(classifyError("", "login required", 1)).toBe("auth_error");
+    expect(classifyError("", "not authenticated", 1)).toBe("auth_error");
+  });
+
+  it("still classifies imperative auth banners on a non-zero exit", () => {
+    // "please log in" is restricted to the exit path (kept out of live detection
+    // to avoid prose false-positives) but must still classify a failed exit.
+    expect(classifyError("", "Please log in to continue", 1)).toBe("auth_error");
+    expect(classifyError("", "sign in required", 1)).toBe("auth_error");
+  });
+
+  it("does not treat ordinary FS permission errors as auth failures", () => {
+    expect(classifyError("", "Error: permission denied: open '.env'", 1)).toBe("nonzero_exit");
   });
 
   it("detects timeouts", () => {

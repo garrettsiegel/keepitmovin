@@ -5,7 +5,8 @@ import { ensureArtifactsIgnored } from "./artifacts.js";
 import {
   getDefaultInteractiveProviders,
   getDefaultProviderOrder,
-  mergeCatalogInteractiveProviders
+  mergeCatalogInteractiveProviders,
+  reconcileProviderOrder
 } from "./provider-catalog.js";
 import type { AgentErrorType, CodePassConfig } from "./types.js";
 import { routingConfigSchema } from "./routing-config.js";
@@ -173,13 +174,21 @@ export const ensureCodepassIgnored = async (cwd: string): Promise<void> => {
   }
 };
 
-const normalizeConfig = (config: CodePassConfig): CodePassConfig => codepassConfigSchema.parse({
-  ...config,
-  harness: {
-    ...config.harness,
-    providers: mergeCatalogInteractiveProviders(config.harness.providers)
-  }
-});
+const normalizeConfig = (config: CodePassConfig): CodePassConfig => {
+  const providers = mergeCatalogInteractiveProviders(config.harness.providers);
+  return codepassConfigSchema.parse({
+    ...config,
+    harness: {
+      ...config.harness,
+      providers,
+      providerOrder: reconcileProviderOrder(
+        config.harness.providers,
+        providers,
+        config.harness.providerOrder
+      )
+    }
+  });
+};
 
 export const defaultConfig = (): CodePassConfig => normalizeConfig(codepassConfigSchema.parse({}));
 

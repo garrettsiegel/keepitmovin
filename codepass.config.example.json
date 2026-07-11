@@ -27,7 +27,7 @@
   },
   "harness": {
     "setupComplete": false,
-    "providerOrder": ["claude", "codex", "antigravity", "opencode"],
+    "providerOrder": ["claude", "codex", "antigravity", "opencode", "grok", "cursor"],
     "transcriptLimitChars": 80000,
     "handoffPath": ".codepass/current/handoff.md",
     "handoffArchiveDir": ".codepass/handoffs",
@@ -59,8 +59,8 @@
         "label": "Cline",
         "enabled": false,
         "command": "cline",
-        "args": ["{{sessionPrompt}}"],
-        "handoffArgs": ["{{handoffPrompt}}"],
+        "args": ["-i", "{{sessionPrompt}}"],
+        "handoffArgs": ["-i", "{{handoffPrompt}}"],
         "integrationType": "pty",
         "controllable": true
       },
@@ -82,6 +82,96 @@
         "args": ["{{cwd}}", "--prompt", "{{sessionPrompt}}"],
         "handoffArgs": ["{{cwd}}", "--prompt", "{{handoffPrompt}}"],
         "integrationType": "pty",
+        "controllable": true
+      },
+      {
+        "name": "grok",
+        "label": "Grok Build",
+        "enabled": true,
+        "command": "grok",
+        "args": ["{{sessionPrompt}}"],
+        "handoffArgs": ["{{handoffPrompt}}"],
+        "integrationType": "pty",
+        "controllable": true
+      },
+      {
+        "name": "cursor",
+        "label": "Cursor Agent",
+        "enabled": true,
+        "command": "agent",
+        "args": ["{{sessionPrompt}}"],
+        "handoffArgs": ["{{handoffPrompt}}"],
+        "integrationType": "pty",
+        "controllable": true
+      },
+      {
+        "name": "ollama",
+        "label": "Ollama",
+        "enabled": false,
+        "command": "ollama",
+        "args": ["run", "llama3.2"],
+        "handoffArgs": ["run", "llama3.2"],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "Read the CodePass handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        "handoffBootstrapInput": "Read the CodePass handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n",
+        "controllable": true
+      },
+      {
+        "name": "aider",
+        "label": "Aider",
+        "enabled": false,
+        "command": "aider",
+        "args": [],
+        "handoffArgs": [],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "Read the CodePass handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        "handoffBootstrapInput": "Read the CodePass handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n",
+        "controllable": true
+      },
+      {
+        "name": "goose",
+        "label": "Goose",
+        "enabled": false,
+        "command": "goose",
+        "args": ["session"],
+        "handoffArgs": ["session"],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "Read the CodePass handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        "handoffBootstrapInput": "Read the CodePass handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n",
+        "controllable": true
+      },
+      {
+        "name": "amp",
+        "label": "Amp",
+        "enabled": false,
+        "command": "amp",
+        "args": [],
+        "handoffArgs": [],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "Read the CodePass handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        "handoffBootstrapInput": "Read the CodePass handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n",
+        "controllable": true
+      },
+      {
+        "name": "droid",
+        "label": "Factory Droid",
+        "enabled": false,
+        "command": "droid",
+        "args": ["{{sessionPrompt}}"],
+        "handoffArgs": ["{{handoffPrompt}}"],
+        "integrationType": "pty",
+        "controllable": true
+      },
+      {
+        "name": "copilot",
+        "label": "GitHub Copilot CLI",
+        "enabled": false,
+        "command": "copilot",
+        "args": [],
+        "handoffArgs": [],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "Read the CodePass handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        "handoffBootstrapInput": "Read the CodePass handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n",
         "controllable": true
       }
     ]

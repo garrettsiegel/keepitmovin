@@ -46,7 +46,7 @@ const program = new Command();
 
 program
   .name("codepass")
-  .description("Interactive agent harness for Claude Code, Codex, Antigravity, opencode, Cline, and more.")
+  .description("Interactive agent harness for Claude Code, Codex, Antigravity, opencode, Grok Build, Cursor Agent, Aider, Goose, Amp, Factory Droid, Copilot, Cline, and more.")
   .version(version);
 
 program

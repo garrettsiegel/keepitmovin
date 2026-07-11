@@ -1,7 +1,8 @@
 # CLAUDE.md — CodePass
 
 CodePass is an interactive terminal harness for coding agents. It launches a coding tool
-(Claude Code, Codex, Antigravity, opencode, Cline, Ollama, …) inside a PTY, watches its output, and
+(Claude Code, Codex, Antigravity, opencode, Grok Build, Cursor Agent, Aider, Goose, Amp,
+Factory Droid, GitHub Copilot CLI, Cline, Ollama, …) inside a PTY, watches its output, and
 on a recognizable limit/failure builds a handoff file and switches to the next configured provider.
 
 For product/UX context and project history see [README.md](./README.md) (usage) and
@@ -41,7 +42,7 @@ Other supporting modules:
 | Module | Role |
 |---|---|
 | `src/config.ts` | Zod schema (`codepassConfigSchema`) — the config contract + defaults. All config shape changes go here. |
-| `src/provider-catalog.ts`, `src/provider-catalog-data.ts` | **Single source of truth** for every known tool (commands, args, integration type, install/auth notes, `limitPatterns`). Add a tool in `provider-catalog-data.ts` — do not scatter provider details across files. |
+| `src/provider-catalog.ts`, `src/provider-catalog-data.ts`, `src/provider-catalog-extra.ts`, `src/provider-catalog-types.ts` | **Single source of truth** for every known tool (commands, args, integration type, install/auth notes, `limitPatterns`). Add core tools in `provider-catalog-data.ts` and opt-in tools in `provider-catalog-extra.ts` — do not scatter provider details across files. |
 | `src/errors.ts` | Error taxonomy + generic pattern matching (`classifyError`, `matchLimitPattern`, `matchProviderLimitPattern`). |
 | `src/handoff-file.ts` | Builds and maintains the `.codepass/current/handoff.md` continuity artifact and its prompts. |
 | `src/handoff-refresh.ts`, `src/handoff-quality.ts` | Refresh mechanical handoff sections and measure whether the task/narrative was actually recorded. |
@@ -89,8 +90,9 @@ Other supporting modules:
 - **PTY vs. pipe fallback.** When `node-pty` can't load, the harness falls back to a piped
   `child_process` (`pty-factory.ts`) that lacks TTY semantics (no resize, degraded interactivity).
   Guard PTY-only calls (e.g. `resize`) for the fallback.
-- **Prompt transport.** Claude, Codex, Antigravity, opencode, and Cline receive the initial or
-  handoff prompt as launch arguments. Ollama is intentionally the bootstrap-input exception.
+- **Prompt transport.** Claude, Codex, Antigravity, opencode, Grok Build, Cursor Agent, Factory Droid,
+  and Cline receive the initial or handoff prompt as launch arguments. Ollama, Aider, Goose, Amp,
+  and GitHub Copilot CLI use PTY bootstrap paste (their one-shot prompt flags exit after a turn).
   Keep transport prompts out of final transcript excerpts when a tool merely echoes its argv.
 - **Routing is local and opt-in.** The classifier must remain deterministic and fail soft when the
   Codex model cache is missing. Automatic routing never selects `ultra`; explicit overrides must

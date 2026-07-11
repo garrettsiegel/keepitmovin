@@ -14,11 +14,16 @@ class FakePty implements PtyProcess {
   writes: string[] = [];
 
   constructor(
-    private readonly script: { data: string; exitCode: number; waitForKill?: boolean }
+    private readonly script: {
+      data: string;
+      exitCode: number;
+      waitForKill?: boolean;
+      exitOnWrite?: boolean;
+    }
   ) {
     queueMicrotask(() => {
       this.#dataListeners.forEach((listener) => listener(this.script.data));
-      if (!this.script.waitForKill) {
+      if (!this.script.waitForKill && !this.script.exitOnWrite) {
         this.exit(this.script.exitCode);
       }
     });
@@ -34,6 +39,9 @@ class FakePty implements PtyProcess {
 
   write(data: string): void {
     this.writes.push(data);
+    if (this.script.exitOnWrite && !this.#exited) {
+      queueMicrotask(() => this.exit(this.script.exitCode));
+    }
   }
 
   kill(): void {
@@ -259,19 +267,23 @@ describe("runHarness", () => {
     config.harness.providerOrder = ["aider"];
     config.harness.providers = [
       {
-        name: "aider",
-        label: "Aider",
+        name: "fake-bootstrap",
+        label: "Bootstrap Tool",
         enabled: true,
         command: "fake-aider",
         args: [],
         handoffArgs: [],
         integrationType: "pty_with_bootstrap_input",
-        bootstrapInput: "{{sessionPrompt}}\n"
+        bootstrapInput:
+          "Read the CodePass handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n"
       }
     ];
+    config.harness.providerOrder = ["fake-bootstrap"];
     const ptys: FakePty[] = [];
     const ptyFactory: PtyFactory = () => {
-      const pty = new FakePty({ data: "ready", exitCode: 0 });
+      // Stay alive after the splash "ready" so the deferred bootstrap paste can
+      // land, then exit once it arrives.
+      const pty = new FakePty({ data: "ready", exitCode: 0, exitOnWrite: true });
       ptys.push(pty);
       return pty;
     };
@@ -284,8 +296,52 @@ describe("runHarness", () => {
     });
 
     expect(summary.success).toBe(true);
-    expect(ptys[0]?.writes[0]).toContain("Keep this shared handoff file updated");
+    expect(ptys[0]?.writes[0]).toContain("Read the CodePass handoff at");
     expect(ptys[0]?.writes[0]).toContain(".codepass/current/handoff.md");
+  });
+
+  it("holds early keystrokes until the bootstrap paste lands, then flushes them", async () => {
+    const cwd = await makeTempDir();
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    config.harness.providers = [
+      {
+        name: "fake-bootstrap",
+        label: "Bootstrap Tool",
+        enabled: true,
+        command: "fake-aider",
+        args: [],
+        handoffArgs: [],
+        integrationType: "pty_with_bootstrap_input",
+        bootstrapInput: "BOOT:{{sessionPrompt}}\n"
+      }
+    ];
+    config.harness.providerOrder = ["fake-bootstrap"];
+    const ptys: FakePty[] = [];
+    const ptyFactory: PtyFactory = () => {
+      const pty = new FakePty({ data: "ready", exitCode: 0, exitOnWrite: true });
+      ptys.push(pty);
+      return pty;
+    };
+
+    const input = new PassThrough();
+    // Type before the deferred bootstrap paste has landed (well inside the lull).
+    setTimeout(() => input.write("typed-early"), 50);
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      ptyFactory,
+      input: input as unknown as NodeJS.ReadStream,
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.success).toBe(true);
+    const writes = ptys[0]?.writes ?? [];
+    // Bootstrap paste is written first; the buffered keystrokes follow it — never
+    // interleaved into the middle of the pasted prompt.
+    expect(writes[0]).toContain("BOOT:");
+    expect(writes[1]).toBe("typed-early");
   });
 
   it("records a provider failure instead of crashing when the PTY factory throws", async () => {

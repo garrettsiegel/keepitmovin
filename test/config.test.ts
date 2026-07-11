@@ -17,7 +17,20 @@ describe("config", () => {
 
     expect(loaded.path).toBeUndefined();
     expect(loaded.config.harness.providers.map((provider) => provider.name)).toEqual(
-      expect.arrayContaining(["claude", "codex", "cline", "antigravity", "opencode"])
+      expect.arrayContaining([
+        "claude",
+        "codex",
+        "cline",
+        "antigravity",
+        "opencode",
+        "grok",
+        "cursor",
+        "aider",
+        "goose",
+        "amp",
+        "droid",
+        "copilot"
+      ])
     );
     expect(loaded.config.updates).toMatchObject({
       checkOnStart: true,
@@ -38,6 +51,52 @@ describe("config", () => {
     expect(loaded.path).toBe(configPath);
     expect(loaded.config.harness.setupComplete).toBe(true);
     expect(loaded.config.harness.providerOrder).toEqual(["codex", "claude"]);
+  });
+
+  it("appends newly default-enabled catalog providers to a legacy providerOrder", async () => {
+    const cwd = await makeRealTempDir();
+    const configPath = path.join(cwd, "codepass.config.json");
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    // Emulate a pre-1.5 config that predates Grok Build / Cursor Agent.
+    config.harness.providers = config.harness.providers.filter(
+      (provider) => provider.name !== "grok" && provider.name !== "cursor"
+    );
+    config.harness.providerOrder = ["claude", "codex", "antigravity", "opencode"];
+    await writeFile(configPath, `${JSON.stringify(config)}\n`, "utf8");
+
+    const loaded = await loadConfig(cwd);
+
+    // Re-added to the providers list as enabled by the catalog merge...
+    const grok = loaded.config.harness.providers.find((provider) => provider.name === "grok");
+    const cursor = loaded.config.harness.providers.find((provider) => provider.name === "cursor");
+    expect(grok?.enabled).toBe(true);
+    expect(cursor?.enabled).toBe(true);
+    // ...and appended to providerOrder so they actually join the fallback chain
+    // instead of showing as enabled-but-unreachable.
+    expect(loaded.config.harness.providerOrder).toContain("grok");
+    expect(loaded.config.harness.providerOrder).toContain("cursor");
+    // The user's existing order is preserved; new tools land at the end.
+    expect(loaded.config.harness.providerOrder.slice(0, 4)).toEqual([
+      "claude",
+      "codex",
+      "antigravity",
+      "opencode"
+    ]);
+  });
+
+  it("does not append a provider the user deliberately dropped from the order", async () => {
+    const cwd = await makeRealTempDir();
+    const configPath = path.join(cwd, "codepass.config.json");
+    const config = defaultConfig();
+    config.harness.setupComplete = true;
+    // grok stays configured but the user removed it from their chain.
+    config.harness.providerOrder = ["claude", "codex"];
+    await writeFile(configPath, `${JSON.stringify(config)}\n`, "utf8");
+
+    const loaded = await loadConfig(cwd);
+
+    expect(loaded.config.harness.providerOrder).toEqual(["claude", "codex"]);
   });
 
   it("migrates old catalog bootstrap defaults to prompt arguments", async () => {

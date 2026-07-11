@@ -59,6 +59,8 @@ export const checkProviderCommand = async (
     const result = await execa(provider.command, provider.versionArgs ?? ["--version"], {
       reject: false,
       timeout: 5_000,
+      // Ignore stdin so install/auth prompts (e.g. stub CLIs) cannot hang the probe.
+      stdin: "ignore",
       stdout: "pipe",
       stderr: "pipe"
     });

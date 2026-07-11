@@ -23,9 +23,22 @@ const AUTH_PATTERNS = [
   "invalid api key",
   "not authenticated",
   "login required",
-  "permission denied",
+  // Bare "permission denied" is ordinary FS/OS noise from coding agents — do not
+  // treat it as provider auth failure. Keep auth-specific collocates only.
   "authentication failed",
-  "no saved credentials"
+  "no saved credentials",
+  "auth failed"
+];
+
+// Auth phrases that read as imperative prose and commonly *head* an agent's own
+// advice line (e.g. "Please log in to the gh CLI and re-run"). The live detector's
+// prose guard trusts any line that STARTS with a pattern, so these would force a
+// mid-session switch on ordinary prose. Restrict them to the post-exit classifier,
+// where a non-zero exit already confirms a real failure.
+const AUTH_EXIT_ONLY_PATTERNS = [
+  "please log in",
+  "please login",
+  "sign in required"
 ];
 
 // A percentage between 1 and 99 (inclusive), with an optional decimal part.
@@ -157,7 +170,10 @@ export const classifyError = (
     return "rate_limit";
   }
 
-  if (AUTH_PATTERNS.some((pattern) => output.includes(pattern))) {
+  if (
+    AUTH_PATTERNS.some((pattern) => output.includes(pattern)) ||
+    AUTH_EXIT_ONLY_PATTERNS.some((pattern) => output.includes(pattern))
+  ) {
     return "auth_error";
   }
 

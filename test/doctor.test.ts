@@ -57,7 +57,7 @@ describe("runDoctor", () => {
       ])
     );
     expect(summary.sessionsDir).toBe(path.join(cwd, ".codepass", "sessions"));
-  });
+  }, 15_000);
 
   it("reports the full popular provider catalog when requested", async () => {
     const cwd = await makeTempDir();
@@ -68,9 +68,16 @@ describe("runDoctor", () => {
       expect.arrayContaining([
         expect.objectContaining({ name: "antigravity", group: "harness", controllable: true }),
         expect.objectContaining({ name: "opencode", group: "harness", controllable: true }),
+        expect.objectContaining({ name: "grok", group: "harness", controllable: true }),
+        expect.objectContaining({ name: "cursor", group: "harness", controllable: true }),
+        expect.objectContaining({ name: "aider", group: "harness", controllable: true }),
+        expect.objectContaining({ name: "goose", group: "harness", controllable: true }),
+        expect.objectContaining({ name: "amp", group: "harness", controllable: true }),
+        expect.objectContaining({ name: "droid", group: "harness", controllable: true }),
+        expect.objectContaining({ name: "copilot", group: "harness", controllable: true }),
         expect.objectContaining({ name: "ollama", group: "harness", controllable: true }),
         expect.objectContaining({ name: "openrouter", group: "guided", integrationType: "external_app" })
       ])
     );
-  });
+  }, 15_000);
 });

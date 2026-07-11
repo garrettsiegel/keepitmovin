@@ -60,7 +60,8 @@ export {
   isCatalogHarnessProvider,
   isHarnessControllable,
   mergeCatalogInteractiveProviders,
-  PROVIDER_CATALOG
+  PROVIDER_CATALOG,
+  reconcileProviderOrder
 } from "./provider-catalog.js";
 export type {
   AgentErrorType,

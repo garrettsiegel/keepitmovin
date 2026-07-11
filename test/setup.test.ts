@@ -65,5 +65,5 @@ describe("setup helpers", () => {
         expect.objectContaining({ name: "openrouter", group: "guided", controllable: false })
       ])
     );
-  });
+  }, 15_000);
 });

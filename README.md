@@ -3,7 +3,8 @@
 ![CodePass automatically hands off from a rate-limited Claude Code to Codex, mid-task](https://raw.githubusercontent.com/garrettsiegel/codepass/main/public/codepass-demo.gif)
 
 **CodePass is a terminal harness that lets you switch between AI coding agents — Claude Code,
-Codex, Antigravity, opencode, Cline, Ollama — without losing your place.**
+Codex, Antigravity, opencode, Grok Build, Cursor Agent, Aider, Goose, Amp, Factory Droid,
+GitHub Copilot CLI, Cline, Ollama — without losing your place.**
 
 If you've ever been deep in a task in Claude Code and hit your 5-hour rate limit, or realized
 partway through that Codex would handle the next part better, you know the problem: switching
@@ -23,7 +24,7 @@ first tool. If it hits a limit, CodePass shows a quick "commercial break" messag
 you.
 
 ```txt
-Claude Code -> Codex -> Google Antigravity -> opencode -> Cline with OpenRouter later
+Claude Code -> Codex -> Google Antigravity -> opencode -> Grok Build -> Cursor Agent -> Cline with OpenRouter later
 ```
 
 ## Who this is for
@@ -198,15 +199,24 @@ CodePass has a built-in catalog of tools with two kinds of integrations:
 | Codex (`codex`) | Harness | Yes | Receives the session prompt as a positional CLI argument. |
 | Google Antigravity (`agy`) | Harness | Yes | Uses `agy --prompt-interactive` with the session prompt. |
 | opencode (`opencode`) | Harness | Yes | Launched with `--prompt "{{sessionPrompt}}"`. |
-| Cline (`cline`) | Harness | No | Enable once installed and its model/provider is configured. |
+| Grok Build (`grok`) | Harness | Yes | Receives the session prompt as a positional CLI argument (`grok "…"`). |
+| Cursor Agent (`agent`) | Harness | Yes | Receives the session prompt as a positional CLI argument (`agent "…"`). Config name is `cursor`. |
+| Cline (`cline`) | Harness | No | Interactive TUI via `cline -i "…"`. Configure a model with `cline auth` first. |
+| Aider (`aider`) | Harness | No | Interactive REPL + bootstrap paste (not `--message`, which exits). Configure a model/API key first. |
+| Goose (`goose`) | Harness | No | Runs `goose session` + bootstrap paste. Configure a provider with `goose configure` first. |
+| Amp (`amp`) | Harness | No | Interactive `amp` + bootstrap paste (not `amp -x`). Sign in or set `AMP_API_KEY`. |
+| Factory Droid (`droid`) | Harness | No | Positional interactive prompt (`droid "…"`). Login or set `FACTORY_API_KEY`. |
+| GitHub Copilot CLI (`copilot`) | Harness | No | Interactive `copilot` + bootstrap paste (not `-p`). Needs a Copilot subscription. |
 | Ollama (`ollama`) | Harness | No | Runs a local model (`ollama run llama3.2` by default) — enable once you've pulled a model. It's a plain chat REPL, not an autonomous agent. |
 | OpenRouter | Guided | No | Not a standalone CLI — configure it as a model provider inside opencode or Cline. |
 
 Run `codepass doctor --all` to see the full catalog with install/setup notes for tools you haven't
 enabled yet.
 
-Ollama is the remaining built-in provider that uses a PTY bootstrap input because its chat REPL
-does not expose a prompt argument. CodePass still preserves the same handoff content for it.
+Several opt-in tools use a PTY bootstrap paste because their interactive mode does not take a
+durable multi-turn prompt as argv (or their prompt flags are one-shot): Ollama, Aider, Goose,
+Amp, and GitHub Copilot CLI. The paste is a **single line** pointing at the handoff file (pasted
+after first tool output or ~750ms), so multi-line session text is not split into many submits.
 
 ## Commands
 
@@ -226,7 +236,8 @@ does not expose a prompt argument. CodePass still preserves the same handoff con
 
 By default, CodePass checks your selected tools each time it starts and **asks before** running
 their verified native updater when one is available (e.g. `claude update`, `codex update`,
-`opencode upgrade`). It never guesses an installer for a tool without a verified update command —
+`opencode upgrade`, `grok update`, `agent update`, `amp update`, `droid update`, `aider --upgrade`).
+It never guesses an installer for a tool without a verified update command —
 those tools just show up as "add later" with setup guidance instead.
 
 Advanced users can change this in `codepass.config.json`:

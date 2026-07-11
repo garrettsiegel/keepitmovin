@@ -90,6 +90,36 @@ describe("detectLiveFailure — generic patterns keep the prose guard", () => {
       )
     ).toBeUndefined();
   });
+
+  it("does not switch on ordinary permission denied tool noise", () => {
+    expect(
+      detectLiveFailure("Error: permission denied: open '.env'\n", provider, config, [])
+    ).toBeUndefined();
+  });
+
+  it("does not switch when the agent's own prose leads with 'Please log in'", () => {
+    // Imperative auth advice heads the line, which the prose guard's startsWith
+    // branch would otherwise treat as a status line — it must not force a switch.
+    expect(
+      detectLiveFailure(
+        "Please log in to the gh CLI and re-run the deploy step.\n",
+        provider,
+        config,
+        []
+      )
+    ).toBeUndefined();
+  });
+
+  it("does not switch when a TUI wraps prose so 'please log in' heads a row", () => {
+    expect(
+      detectLiveFailure(
+        "First you'll want to\nplease log in to the Supabase dashboard and create a project.\n",
+        provider,
+        config,
+        []
+      )
+    ).toBeUndefined();
+  });
 });
 
 describe("detectLiveFailure — percentage usage warnings are not limits", () => {

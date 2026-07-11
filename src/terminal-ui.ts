@@ -127,7 +127,7 @@ const sectionRows = (
 export const renderSetupIntro = (): string => [
   "",
   box("CodePass", [
-    "One terminal for Claude, Codex, Antigravity, opencode, and your fallback stack.",
+    "One terminal for Claude, Codex, Antigravity, opencode, Grok, Cursor, and your fallback stack.",
     "CodePass starts the first tool, keeps a live handoff file,",
     "and helps you switch when limits or login issues interrupt work."
   ]),

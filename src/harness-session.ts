@@ -1,5 +1,6 @@
 import process from "node:process";
 import chalk from "chalk";
+import { createBootstrapWriter } from "./bootstrap-input.js";
 import type { AgentErrorType, AppliedRoute, HarnessAttemptLog, InteractiveProviderConfig, CodePassConfig } from "./types.js";
 import { detectExitFailure, detectLiveFailure, getManualSwitchSequence } from "./failure-detection.js";
 import { formatCommandEcho, renderInteractiveLaunch } from "./interactive-provider.js";
@@ -7,9 +8,7 @@ import type { PtyFactory, PtyProcess } from "./pty-factory.js";
 import { RollingTranscript } from "./transcript.js";
 import { armSessionWatchers, preLaunchUsageGate } from "./harness-watchers.js";
 import { formatUsageProbeMessage, resolveUsageProbe, type UsageProbeOptions } from "./usage-probe.js";
-// Runs a single provider in a PTY: mirrors stdin/stdout, watches live output for
-// failures, and resolves with an attempt log once the tool exits or CodePass
-// pauses it (manual switch, idle timeout, or a detected limit).
+/** Run one provider in a PTY until exit, manual switch, idle timeout, or limit. */
 export const waitForProvider = async (
   provider: InteractiveProviderConfig,
   config: CodePassConfig,
@@ -67,6 +66,8 @@ export const waitForProvider = async (
 
     output?.write(chalk.yellow(`CodePass could not start ${provider.label}: ${message}\n`));
 
+    const missing =
+      message.toLowerCase().includes("not found") || message.toLowerCase().includes("enoent");
     return {
       provider: provider.name,
       label: provider.label,
@@ -75,11 +76,9 @@ export const waitForProvider = async (
       startedAt,
       endedAt: new Date().toISOString(),
       exitCode: 127,
-        errorType: message.toLowerCase().includes("not found") || message.toLowerCase().includes("enoent")
-          ? "command_not_found"
-          : "unknown",
-        transcriptExcerpt: message,
-        ...(route ? { route } : {})
+      errorType: missing ? "command_not_found" : "unknown",
+      transcriptExcerpt: message,
+      ...(route ? { route } : {})
     };
   }
 
@@ -89,10 +88,7 @@ export const waitForProvider = async (
   let cleaned = false;
 
   const triggerIdleTimeout = (): void => {
-    if (settled) {
-      return;
-    }
-
+    if (settled) return;
     detectedError = "timeout";
     settled = true;
     output?.write(
@@ -102,14 +98,8 @@ export const waitForProvider = async (
   };
 
   const armIdleTimer = (): void => {
-    if (idleTimeoutMs <= 0 || settled) {
-      return;
-    }
-
-    if (idleTimer) {
-      clearTimeout(idleTimer);
-    }
-
+    if (idleTimeoutMs <= 0 || settled) return;
+    if (idleTimer) clearTimeout(idleTimer);
     idleTimer = setTimeout(triggerIdleTimeout, idleTimeoutMs);
   };
 
@@ -146,18 +136,22 @@ export const waitForProvider = async (
     child.kill();
   };
 
-  // Always-run teardown: restore the terminal and drop every listener so a
-  // manual switch, timeout, normal exit, or Ctrl+C never leaves the shell in
-  // raw mode.
-  const cleanup = (): void => {
-    if (cleaned) {
-      return;
-    }
+  let bootstrap: ReturnType<typeof createBootstrapWriter> | undefined;
+  // Keystrokes mirrored to the child before the (deferred) bootstrap paste lands
+  // are held here, then flushed once the paste is written — otherwise early user
+  // input interleaves with and corrupts the pasted prompt.
+  const pendingChildInput: string[] = [];
 
+  const flushPendingInput = (): void => {
+    if (pendingChildInput.length === 0) return;
+    child.write(pendingChildInput.splice(0).join(""));
+  };
+
+  const cleanup = (): void => {
+    if (cleaned) return;
     cleaned = true;
-    if (idleTimer) {
-      clearTimeout(idleTimer);
-    }
+    if (idleTimer) clearTimeout(idleTimer);
+    bootstrap?.cancel();
     stopWatchers();
     input?.off("data", onInput);
     input?.setRawMode?.(false);
@@ -178,6 +172,11 @@ export const waitForProvider = async (
       return;
     }
 
+    if (bootstrap && !bootstrap.isWritten()) {
+      pendingChildInput.push(chunk.toString());
+      return;
+    }
+
     child.write(chunk.toString());
   }
 
@@ -190,11 +189,21 @@ export const waitForProvider = async (
   armIdleTimer();
 
   return new Promise((resolve) => {
+    bootstrap = createBootstrapWriter(child, launch.bootstrapInput, {
+      isSettled: () => settled,
+      onWritten: () => {
+        lastActivityAt = Date.now();
+        armIdleTimer();
+        flushPendingInput();
+      }
+    });
+
     child.onData((data) => {
       lastActivityAt = Date.now();
       transcript.append(data);
       output?.write(data);
       armIdleTimer();
+      bootstrap?.onChildData();
 
       if (!detectedError) {
         detectedError = detectLiveFailure(
@@ -243,8 +252,6 @@ export const waitForProvider = async (
       });
     });
 
-    if (launch.bootstrapInput) {
-      child.write(launch.bootstrapInput);
-    }
+    bootstrap.arm();
   });
 };
