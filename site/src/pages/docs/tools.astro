@@ -1,0 +1,114 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const tools = [
+  {
+    name: "Claude Code",
+    cmd: "claude",
+    url: "https://code.claude.com/",
+    install: "Install Claude Code, then run claude auth.",
+    auth: "claude auth opens a browser login.",
+  },
+  {
+    name: "Codex",
+    cmd: "codex",
+    url: "https://developers.openai.com/codex/",
+    install: "Install the Codex CLI.",
+    auth: "codex login, or configure an OpenAI API key.",
+  },
+  {
+    name: "Kimi CLI",
+    cmd: "kimi",
+    url: "https://www.kimi.com/code/",
+    install: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash, brew install kimi-code, or npm i -g @moonshot-ai/kimi-code.",
+    auth: "Run kimi then /login (browser or API key), kimi login (device code), or set KIMI_API_KEY.",
+  },
+  {
+    name: "Google Antigravity",
+    cmd: "agy",
+    url: "https://antigravity.google/",
+    install: "curl -fsSL https://antigravity.google/cli/install.sh | bash, then verify with agy --version.",
+    auth: "Sign in by running agy, or set GEMINI_API_KEY / ANTIGRAVITY_API_KEY for headless use.",
+  },
+  {
+    name: "opencode",
+    cmd: "opencode",
+    url: "https://github.com/anomalyco/opencode",
+    install: "npm i -g opencode-ai@latest, or Homebrew.",
+    auth: "opencode providers to configure model providers and credentials.",
+  },
+  {
+    name: "Grok Build",
+    cmd: "grok",
+    url: "https://x.ai/cli",
+    install: "curl -fsSL https://x.ai/cli/install.sh | bash, then verify with grok --version.",
+    auth: "grok login (browser OAuth), or set XAI_API_KEY.",
+    note: "A third-party CLI may also install as grok — use the official xAI installer and confirm grok --version reports Grok Build.",
+  },
+  {
+    name: "Cursor Agent",
+    cmd: "agent",
+    url: "https://cursor.com/cli",
+    install: "curl https://cursor.com/install -fsS | bash, then verify with agent --version.",
+    auth: "agent login (browser OAuth), or set CURSOR_API_KEY.",
+    note: "The binary is named agent, which can collide with other tools — confirm agent --version is Cursor Agent.",
+  },
+  {
+    name: "GitHub Copilot CLI",
+    cmd: "copilot",
+    url: "https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli",
+    install: "npm install -g @github/copilot (Node 22+), or brew install --cask copilot-cli.",
+    auth: "Run /login on first launch, or set COPILOT_GITHUB_TOKEN / GH_TOKEN.",
+    note: "Requires an active GitHub Copilot subscription.",
+  },
+  {
+    name: "Ollama",
+    cmd: "ollama",
+    url: "https://ollama.com/",
+    install: "Install from ollama.com/download, then ollama pull llama3.2.",
+    auth: "No login — models run entirely on your machine.",
+    note: "The local fallback for advice and planning when every cloud tool is blocked. It's a chat session, not an autonomous agent — it won't edit files.",
+  },
+];
+---
+
+<DocsLayout
+  title="Supported tools — keepitmovin docs"
+  description="The nine tools keepitmovin supports, with install and sign-in notes for each."
+>
+  <p class="eyebrow">// docs</p>
+  <h1>Supported tools</h1>
+  <p>
+    Nine tools, one fallback order. keepitmovin detects what's installed
+    during setup; you pick which ones to use and their order. Limit-message
+    detection is curated per tool and verified against tool source code and
+    published reports where possible — where a tool's banner can't be
+    confirmed, keepitmovin falls back to its generic limit detection and says
+    so.
+  </p>
+
+  {
+    tools.map((tool) => (
+      <section class="tool-entry">
+        <h2>
+          {tool.name} <code>{tool.cmd}</code>
+        </h2>
+        <ul>
+          <li><strong>Install:</strong> {tool.install}</li>
+          <li><strong>Sign in:</strong> {tool.auth}</li>
+          {tool.note && <li><strong>Note:</strong> {tool.note}</li>}
+          <li>
+            <a href={tool.url} target="_blank" rel="noopener">
+              Official docs ↗
+            </a>
+          </li>
+        </ul>
+      </section>
+    ))
+  }
+
+  <p>
+    Run <code>kim doctor --all</code> to see the same catalog with setup
+    notes on your own machine.
+  </p>
+</DocsLayout>

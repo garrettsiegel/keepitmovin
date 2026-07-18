@@ -1,0 +1,56 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="How handoff works — keepitmovin docs"
+  description="The handoff file: what it carries, who writes it, and the honest limitation."
+>
+  <p class="eyebrow">// docs</p>
+  <h1>How handoff works</h1>
+  <p>
+    The handoff file — <code>.keepitmovin/current/handoff.md</code> — is the
+    shared continuity layer between your tools. Every tool reads it and
+    updates it as it works, so the next tool starts informed instead of blank.
+  </p>
+
+  <h2>What's in it</h2>
+  <ul>
+    <li><strong>Current goal, working state, blockers, next step</strong> — the narrative sections, written by the active tool as it works.</li>
+    <li><strong>Changed files and repository snapshot</strong> — refreshed automatically by keepitmovin on a timer, accurate even if the tool never updates them.</li>
+    <li><strong>Switch history</strong> — one line per tool switch, trimmed to the last ten.</li>
+    <li><strong>The reason the switch happened</strong> and a generated handoff prompt for the next tool.</li>
+  </ul>
+  <p>
+    It stays lean on purpose: raw <code>git diff</code> output is never
+    stored, and only the most recent transcript excerpt is kept. If the
+    narrative sections go stale while a tool is clearly still working,
+    keepitmovin types a short visible reminder into the tool asking it to
+    update the file.
+  </p>
+
+  <h2>What it costs</h2>
+  <p>
+    Nothing extra. The active tool maintains the narrative as part of its
+    normal work — keepitmovin makes no additional AI calls to keep the file
+    fresh.
+  </p>
+
+  <h2>The honest limitation</h2>
+  <p>
+    No coding agent currently exposes a reliable way to export its private
+    live session. So when keepitmovin switches tools, the new tool starts a
+    fresh session: it gets the handoff file — your goal, decisions, and
+    recent changes — not the previous tool's private chat history. Practical
+    continuity, stated plainly.
+  </p>
+
+  <h2>Safety</h2>
+  <p>
+    Handoff files capture task text, terminal output, and repository
+    metadata, which can contain secrets. keepitmovin writes a
+    <code>.keepitmovin/.gitignore</code> so these artifacts stay out of your
+    repo, and best-effort redacts common credential formats before saving.
+    Don't share them blindly. Run <code>kim clear</code> to delete them.
+  </p>
+</DocsLayout>

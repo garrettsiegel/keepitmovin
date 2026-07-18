@@ -1,0 +1,107 @@
+---
+import "../styles/design-system.css";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..700&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400..700&display=swap"
+      rel="stylesheet"
+    />
+    <script is:inline>
+      document.documentElement.classList.add("js");
+    </script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a class="wordmark" href="/"><span class="glyph">»</span>keepitmovin</a>
+        <nav class="site-nav">
+          <a href="/docs">Docs</a>
+          <a
+            href="https://github.com/garrettsiegel/keepitmovin"
+            target="_blank"
+            rel="noopener">GitHub</a
+          >
+          <a
+            class="nav-cta"
+            href="https://www.npmjs.com/package/keepitmovin"
+            target="_blank"
+            rel="noopener">Install</a
+          >
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p class="tagline">Never stop mid-task again.</p>
+        <nav class="footer-links">
+          <a
+            href="https://github.com/garrettsiegel/keepitmovin"
+            target="_blank"
+            rel="noopener">GitHub</a
+          >
+          <a
+            href="https://www.npmjs.com/package/keepitmovin"
+            target="_blank"
+            rel="noopener">npm</a
+          >
+          <a href="/docs">Docs</a>
+          <a
+            href="https://github.com/garrettsiegel/keepitmovin/blob/main/LICENSE"
+            target="_blank"
+            rel="noopener">License: MIT</a
+          >
+        </nav>
+        <p class="footer-word" aria-hidden="true">keepitmovin</p>
+        <p class="copyright">© 2026 keepitmovin</p>
+      </div>
+    </footer>
+
+    <script is:inline>
+      (function () {
+        if (!("IntersectionObserver" in window)) return;
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("revealed");
+                io.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.12 }
+        );
+        document
+          .querySelectorAll("[data-reveal]")
+          .forEach(function (el) {
+            io.observe(el);
+          });
+      })();
+    </script>
+  </body>
+</html>

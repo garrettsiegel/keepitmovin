@@ -1,0 +1,55 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const faqs = [
+  {
+    q: "Does it transfer my chat session to the next tool?",
+    a: "No — no coding agent exposes a reliable way to do that. The new tool starts a fresh session and reads the handoff file: your goal, decisions, and recent changes. Practical continuity, not a cloned conversation.",
+  },
+  {
+    q: "Does it cost extra API calls?",
+    a: "No. The active tool maintains the handoff file as part of its normal work. keepitmovin itself makes no AI calls.",
+  },
+  {
+    q: "Which tools are supported?",
+    a: "Nine: Claude Code, Codex, Kimi CLI, Google Antigravity, opencode, Grok Build, Cursor Agent, GitHub Copilot CLI, and Ollama as a local fallback. See Supported tools for install notes.",
+  },
+  {
+    q: "Can I switch tools manually?",
+    a: "Yes. Press Ctrl+] while a tool runs to hand off to the next tool in your fallback order right away.",
+  },
+  {
+    q: "Does keepitmovin commit or push my code?",
+    a: "Never. It doesn't commit by default and never pushes. The tools it runs have their own behavior, but keepitmovin itself only watches and switches.",
+  },
+  {
+    q: "Where does it store things?",
+    a: "Everything lives under .keepitmovin/ in your project: the live handoff file, archived handoffs, and session summaries. Run kim clear to wipe them.",
+  },
+  {
+    q: "Is my data safe in the handoff file?",
+    a: "Handoff files can contain task text and terminal output, which may include secrets. keepitmovin writes a .keepitmovin/.gitignore so they stay out of your repo and redacts common credential formats before saving — but treat the files as sensitive and don't share them blindly.",
+  },
+  {
+    q: "A tool I have isn't detected. What now?",
+    a: "Run kim doctor --all. It shows the full catalog, which commands it found on your PATH, and setup notes for anything missing.",
+  },
+];
+---
+
+<DocsLayout
+  title="FAQ — keepitmovin docs"
+  description="The questions everyone asks first about keepitmovin."
+>
+  <p class="eyebrow">// docs</p>
+  <h1>FAQ</h1>
+
+  {
+    faqs.map((faq) => (
+      <section class="faq-entry">
+        <h2>{faq.q}</h2>
+        <p>{faq.a}</p>
+      </section>
+    ))
+  }
+</DocsLayout>

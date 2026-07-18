@@ -1,0 +1,40 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import InstallCommand from "../../components/InstallCommand.astro";
+---
+
+<DocsLayout
+  title="Install — keepitmovin docs"
+  description="Install keepitmovin with npm and verify your setup."
+>
+  <p class="eyebrow">// docs</p>
+  <h1>Install</h1>
+
+  <h2>Requirements</h2>
+  <ul>
+    <li>Node.js 20 or newer.</li>
+    <li>
+      At least one supported coding tool already installed and signed in —
+      see <a href="/docs/tools">Supported tools</a>. keepitmovin runs the
+      tools you have; it doesn't replace them.
+    </li>
+  </ul>
+
+  <h2>Install with npm</h2>
+  <InstallCommand command="npm install -g keepitmovin" />
+  <p>Or run it without installing anything:</p>
+  <pre><code>npx keepitmovin</code></pre>
+
+  <h2>Verify</h2>
+  <pre><code>kim doctor</code></pre>
+  <p>
+    The doctor checks your config, which tools it can find on your
+    <code>PATH</code>, and your git context. Add <code>--all</code> to see the
+    full tool catalog with setup notes for tools you haven't enabled yet.
+  </p>
+
+  <h2>Next step</h2>
+  <p>
+    Run <code>kim</code> and follow the <a href="/docs/quickstart">quickstart</a>.
+  </p>
+</DocsLayout>

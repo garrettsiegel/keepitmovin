@@ -1,0 +1,38 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, "");
+
+const pages = [
+  { href: "/docs", label: "Overview" },
+  { href: "/docs/install", label: "Install" },
+  { href: "/docs/quickstart", label: "Quickstart" },
+  { href: "/docs/handoff", label: "How handoff works" },
+  { href: "/docs/tools", label: "Supported tools" },
+  { href: "/docs/configuration", label: "Configuration" },
+  { href: "/docs/faq", label: "FAQ" },
+];
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="docs-grid container">
+    <nav class="docs-nav" aria-label="Docs">
+      {
+        pages.map((page) => (
+          <a href={page.href} class:list={[{ active: path === page.href }]}>
+            {page.label}
+          </a>
+        ))
+      }
+    </nav>
+    <article class="docs-content prose">
+      <slot />
+    </article>
+  </div>
+</BaseLayout>

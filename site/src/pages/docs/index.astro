@@ -1,0 +1,61 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="Docs — keepitmovin"
+  description="keepitmovin documentation: install, quickstart, the handoff file, supported tools, configuration, and FAQ."
+>
+  <p class="eyebrow">// docs</p>
+  <h1>keepitmovin docs</h1>
+  <p>
+    keepitmovin runs your coding agents in one terminal, watches for rate
+    limits, and hands off to the next tool with full context — so you never
+    stop mid-task. Run <code>kim</code> and a first-run wizard gets you
+    started. Zero config required.
+  </p>
+
+  <h2>Start here</h2>
+  <ul>
+    <li><a href="/docs/install">Install</a> — get the CLI on your machine.</li>
+    <li>
+      <a href="/docs/quickstart">Quickstart</a> — the zero-config path, first
+      run to first handoff.
+    </li>
+    <li>
+      <a href="/docs/handoff">How handoff works</a> — what the handoff file is
+      and why it matters.
+    </li>
+    <li>
+      <a href="/docs/tools">Supported tools</a> — the nine tools, with install
+      and sign-in notes for each.
+    </li>
+    <li>
+      <a href="/docs/configuration">Configuration</a> — every setting in the
+      config file, with defaults.
+    </li>
+    <li><a href="/docs/faq">FAQ</a> — the questions everyone asks first.</li>
+  </ul>
+
+  <h2>Every command</h2>
+  <table>
+    <thead>
+      <tr><th>Command</th><th>What it does</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>kim</code></td><td>Start (or resume) your tools.</td></tr>
+      <tr><td><code>kim init</code></td><td>Create the config file and <code>.keepitmovin/</code> folders without the wizard.</td></tr>
+      <tr><td><code>kim setup</code></td><td>Re-run the guided setup wizard.</td></tr>
+      <tr><td><code>kim providers</code></td><td>Edit your fallback order (<code>--all</code> to browse the full catalog).</td></tr>
+      <tr><td><code>kim doctor</code></td><td>Check your config, tool availability, and git context (<code>--all</code> for the full catalog).</td></tr>
+      <tr><td><code>kim handoff</code></td><td>Show the current handoff file's path and a preview.</td></tr>
+      <tr><td><code>kim session</code></td><td>Show a summary of the most recent session.</td></tr>
+      <tr><td><code>kim clear</code></td><td>Delete local handoff and session files (<code>--yes</code> to skip the confirmation).</td></tr>
+    </tbody>
+  </table>
+  <p>
+    <code>keepitmovin</code> works as the full command name too — same binary.
+    Press <kbd>Ctrl+]</kbd> while a tool runs to switch to the next tool
+    manually.
+  </p>
+</DocsLayout>

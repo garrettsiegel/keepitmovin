@@ -1,0 +1,103 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="Configuration — keepitmovin docs"
+  description="Every keepitmovin config setting, with defaults: fallback order, usage probes, handoff refresh, tool updates."
+>
+  <p class="eyebrow">// docs</p>
+  <h1>Configuration</h1>
+  <p>
+    You never need a config file to start — the setup wizard writes one for
+    you. Everything below lives in <code>keepitmovin.config.json</code> in your
+    project directory and is optional.
+  </p>
+
+  <h2>Your tools and fallback order</h2>
+  <p>
+    The config lists your enabled tools and the order keepitmovin falls back
+    through them. Edit both interactively with <code>kim providers</code>
+    rather than by hand.
+  </p>
+
+  <h2>Usage probes</h2>
+  <p>
+    Keyword detection reacts <em>after</em> a tool prints a limit banner. When
+    a tool records its own remaining usage on disk, keepitmovin can read it
+    and switch <em>before</em> the wall — a usage probe. Today only Codex
+    exposes this; probes are read-only and fail safe. Configure under
+    <code>harness.usageProbe</code>:
+  </p>
+  <table>
+    <thead>
+      <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>true</code></td><td>Master switch for all usage probes.</td></tr>
+      <tr><td><code>thresholdPercent</code></td><td><code>95</code></td><td>Switch when a tool's highest usage window reaches this percent.</td></tr>
+      <tr><td><code>pollIntervalMs</code></td><td><code>30000</code></td><td>How often to re-check while a tool runs.</td></tr>
+    </tbody>
+  </table>
+  <p>
+    A single tool can override the threshold with its own
+    <code>usageProbe.thresholdPercent</code>. Run <code>kim doctor</code> to
+    see current usage for probed tools.
+  </p>
+
+  <h2>Handoff refresh</h2>
+  <p>
+    keepitmovin keeps the mechanical sections of the
+    <a href="/docs/handoff">handoff file</a> fresh on a timer and nudges the
+    active tool if the narrative goes stale. Configure under
+    <code>harness.handoffRefresh</code>:
+  </p>
+  <table>
+    <thead>
+      <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>enabled</code></td><td><code>true</code></td><td>Master switch for the refresh/nudge system.</td></tr>
+      <tr><td><code>intervalMs</code></td><td><code>60000</code></td><td>How often the mechanical sections are refreshed.</td></tr>
+      <tr><td><code>nudge.enabled</code></td><td><code>true</code></td><td>Whether to type the stale-handoff reminder into the tool.</td></tr>
+      <tr><td><code>nudge.staleAfterMs</code></td><td><code>300000</code></td><td>How long the narrative can go unchanged before it's stale.</td></tr>
+      <tr><td><code>nudge.idleForMs</code></td><td><code>10000</code></td><td>The tool must be idle this long before a nudge is sent.</td></tr>
+      <tr><td><code>nudge.minTranscriptGrowthChars</code></td><td><code>2000</code></td><td>Output required before a nudge is warranted.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Task routing</h2>
+  <p>
+    Opt-in during setup. When enabled, keepitmovin classifies your task
+    locally and picks a model and reasoning effort within your fallback
+    order. It never changes your order and makes no network calls for
+    routing.
+  </p>
+  <pre><code>kim "Investigate the intermittent auth failure"
+kim --tier deep "Implement the approved plan"
+kim --model gpt-5.6-sol --effort high "Review the payment migration"
+kim --no-route "Use the tool defaults for this task"</code></pre>
+  <p>
+    Tiers are <code>light</code>, <code>standard</code>, <code>deep</code>,
+    and <code>max</code>, mapped to appropriate models per tool. Automatic
+    routing never selects <code>ultra</code> effort — pass
+    <code>--effort ultra</code> explicitly when the model supports it.
+  </p>
+
+  <h2>Tool updates</h2>
+  <p>
+    On start, keepitmovin checks your selected tools and <strong>asks
+    before</strong> running a tool's own verified updater. It never guesses
+    an installer. Configure under <code>updates</code>:
+  </p>
+  <table>
+    <thead>
+      <tr><th>Field</th><th>Default</th><th>Meaning</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>checkOnStart</code></td><td><code>true</code></td><td>Check your tools for updates each time keepitmovin starts.</td></tr>
+      <tr><td><code>mode</code></td><td><code>"prompt"</code></td><td><code>"always"</code> runs updates without asking; <code>"off"</code> skips the check.</td></tr>
+      <tr><td><code>includeDisabledProviders</code></td><td><code>false</code></td><td>Also check tools outside your fallback order.</td></tr>
+    </tbody>
+  </table>
+</DocsLayout>

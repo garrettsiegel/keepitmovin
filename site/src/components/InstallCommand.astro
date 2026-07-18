@@ -1,0 +1,39 @@
+---
+interface Props {
+  command: string;
+}
+
+const { command } = Astro.props;
+---
+
+<div class="install-command">
+  <code><span class="prompt" aria-hidden="true">$</span> {command}</code>
+  <button type="button" class="copy-btn" data-copy={command}>copy</button>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>(".copy-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const text = btn.dataset.copy ?? "";
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        // Fallback for non-secure contexts.
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      btn.classList.add("copied");
+      btn.textContent = "copied";
+      window.setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.textContent = "copy";
+      }, 1600);
+    });
+  });
+</script>

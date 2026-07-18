@@ -1,0 +1,60 @@
+---
+import DocsLayout from "../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+  title="Quickstart — keepitmovin docs"
+  description="From first run to first handoff in under a minute. Zero config required."
+>
+  <p class="eyebrow">// docs</p>
+  <h1>Quickstart</h1>
+  <p>
+    Zero config required. This is the whole path from install to your first
+    automatic handoff.
+  </p>
+
+  <h2>1. Run it</h2>
+  <pre><code>kim</code></pre>
+  <p>
+    On first run, a setup wizard detects which supported tools you have
+    installed and asks which ones you want to use, in what order. That order
+    is your <strong>fallback order</strong> — the sequence keepitmovin walks
+    through when a tool gets blocked.
+  </p>
+
+  <h2>2. Work like normal</h2>
+  <p>
+    keepitmovin launches the first tool in a real terminal — it looks and
+    feels exactly like running that tool directly. Your keystrokes go straight
+    through. While you work, keepitmovin keeps a shared
+    <a href="/docs/handoff">handoff file</a> up to date: your goal, what's
+    changed, what's next.
+  </p>
+
+  <h2>3. Hit a limit — or don't notice you did</h2>
+  <p>
+    When the active tool prints its rate-limit message, keepitmovin recognizes
+    it, checkpoints the handoff file, shows a short "switching tools" note,
+    and launches the next tool in your fallback order with the handoff loaded.
+    The new tool picks up where the last one stopped.
+  </p>
+
+  <h2>Switch on your own schedule</h2>
+  <p>
+    Press <kbd>Ctrl+]</kbd> while a tool runs to hand off to the next tool
+    right now — useful when you want a different tool's take on something, not
+    only when a limit hits.
+  </p>
+
+  <h2>Where things live</h2>
+  <p>Everything keepitmovin writes stays in your project directory:</p>
+  <pre><code>.keepitmovin/current/handoff.md   the live handoff file
+.keepitmovin/handoffs/            archived handoffs from past sessions
+.keepitmovin/sessions/            session summaries</code></pre>
+  <p>
+    Run <code>kim clear</code> to wipe these anytime. Handoff files can
+    contain task text and terminal output, so keepitmovin writes a
+    <code>.keepitmovin/.gitignore</code> for you and redacts common credential
+    formats before saving — still treat them as sensitive.
+  </p>
+</DocsLayout>

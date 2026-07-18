@@ -1,0 +1,116 @@
+---
+// Live handoff simulation — auto-plays the keepitmovin story, looping.
+// Lines appear one at a time with a caret; reduced-motion users get the
+// full transcript statically (script bails before clearing the DOM).
+//
+// The output is written to read like the REAL tools a user would see:
+// Claude Code's TUI idioms and rate-limit banner, the actual keepitmovin
+// "Switching tools" box (see codepass/src/terminal-ui.ts renderCommercialBreak),
+// then Codex resuming from the handoff file.
+
+// --- Reproduce the CLI's bordered box exactly (box() in terminal-ui.ts). ---
+const BOX_WIDTH = 58; // fits the longest body line with no overflow
+const pad = (value: string, width: number): string =>
+  value + " ".repeat(Math.max(0, width - value.length));
+const center = (value: string, width: number): string => {
+  const total = Math.max(0, width - value.length);
+  const left = Math.floor(total / 2);
+  return " ".repeat(left) + value + " ".repeat(total - left);
+};
+const boxTitle = "Switching tools";
+const boxBody = [
+  "Claude Code hit its usage limit. Starting Codex…",
+  "Your context is packed — pick up right where you left off.",
+];
+const dash = "─".repeat(BOX_WIDTH + 2);
+const box = [
+  { cls: "box-frame", text: `╭${dash}╮` },
+  { cls: "box-title", text: `│ ${center(boxTitle, BOX_WIDTH)} │` },
+  { cls: "box-frame", text: `├${dash}┤` },
+  ...boxBody.map((line) => ({ cls: "box-body", text: `│ ${pad(line, BOX_WIDTH)} │` })),
+  { cls: "box-frame", text: `╰${dash}╯` },
+];
+
+// The full transcript, in order. `cls` drives colour + whether the line types.
+const lines = [
+  { cls: "cmd", text: "$ kim" },
+  { cls: "kim", text: "Starting Claude Code — first in your fallback order" },
+  { cls: "claude", text: "⏺ Read(src/auth/refresh.ts)" },
+  { cls: "claude", text: "⏺ Update(src/auth/refresh.ts)" },
+  { cls: "muted", text: "  ⎿ Updated 3 additions, 1 removal" },
+  { cls: "claude", text: "● Running tests…" },
+  { cls: "ok", text: "  ✓ 24 passed" },
+  { cls: "limit", text: "Claude usage limit reached ∙ resets 3am" },
+  ...box,
+  { cls: "codex", text: "> Reading .keepitmovin/current/handoff.md" },
+  { cls: "muted", text: "  Picking up: finish the refresh-token rotation" },
+  { cls: "codex", text: "● Wired refreshed token into the request client" },
+  { cls: "ok", text: "  ✓ 24 passed" },
+];
+---
+
+<figure class="terminal sim">
+  <div class="terminal-bar">
+    <span class="terminal-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="terminal-title">kim — live handoff</span>
+  </div>
+  <div class="sim-body" id="handoff-sim">
+    {
+      lines.map((line) => (
+        <span class={`sim-line ${line.cls}`} data-text={line.text}>
+          {line.text}
+        </span>
+      ))
+    }
+  </div>
+</figure>
+
+<script>
+  const sim = document.getElementById("handoff-sim");
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (sim && !reduce) {
+    const lines = Array.from(sim.querySelectorAll(".sim-line")).map((el) => ({
+      cls: (el as HTMLElement).className,
+      text: (el as HTMLElement).dataset.text ?? "",
+    }));
+    const caret = document.createElement("span");
+    caret.className = "sim-caret";
+
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const isTyped = (cls: string) => /\b(claude|codex|kim)\b/.test(cls);
+    const isBox = (cls: string) => cls.includes("box-");
+
+    async function play() {
+      for (;;) {
+        sim!.innerHTML = "";
+        for (const line of lines) {
+          const el = document.createElement("span");
+          el.className = line.cls;
+          sim!.appendChild(el);
+          el.appendChild(caret);
+          // Type the tool/kim action lines; everything else appears whole.
+          if (isTyped(line.cls)) {
+            for (let i = 0; i <= line.text.length; i++) {
+              el.textContent = line.text.slice(0, i);
+              el.appendChild(caret);
+              await wait(13);
+            }
+          } else {
+            el.textContent = line.text;
+            el.appendChild(caret);
+          }
+
+          // Pacing: draw the box fast, hold on the limit banner.
+          if (isBox(line.cls)) await wait(line.cls.includes("frame") && el.textContent!.startsWith("╰") ? 900 : 70);
+          else if (line.cls.includes("limit")) await wait(1150);
+          else await wait(380);
+        }
+        caret.remove();
+        await wait(4200);
+      }
+    }
+
+    play();
+  }
+</script>

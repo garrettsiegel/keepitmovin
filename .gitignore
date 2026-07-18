@@ -33,3 +33,6 @@ PLAN2.md
 BRAND.md
 CHANGELOG.md
 GAMEPLAN.md
+# Astro (nested site/) build cache
+.astro/
+site/dist/
