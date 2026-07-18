@@ -1,6 +1,6 @@
 {
   "name": "keepitmovin",
-  "version": "1.6.1",
+  "version": "2.0.0",
   "description": "Run your AI coding tools (Claude Code, Codex, Kimi CLI, Google Antigravity, opencode, Grok Build, Cursor Agent, GitHub Copilot CLI, Ollama) in one terminal. When one hits its usage limit, keepitmovin hands the next tool a handoff file with your full context — so you never stop mid-task.",
   "keywords": [
     "cli",
