@@ -1,8 +1,18 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { createRequire } from "node:module";
 import process from "node:process";
-import * as nodePty from "node-pty";
 import chalk from "chalk";
 import { ensurePtyHelperExecutable } from "./pty-helper.js";
+
+// node-pty is a native module and is loaded LAZILY (via require, on first spawn)
+// rather than a static import — so merely importing this file never triggers the
+// native binary load. On platforms or CI where node-pty isn't built for the
+// arch, `loadNodePty()` throws and `defaultPtyFactory` falls back to pipes.
+const require = createRequire(import.meta.url);
+type NodePtyModule = typeof import("node-pty");
+let cachedNodePty: NodePtyModule | undefined;
+const loadNodePty = (): NodePtyModule =>
+  (cachedNodePty ??= require("node-pty") as NodePtyModule);
 
 export interface PtyProcess {
   onData(listener: (data: string) => void): void;
@@ -70,6 +80,8 @@ class ChildProcessPtyAdapter implements PtyProcess {
 }
 
 const nodePtyFactory: PtyFactory = (command, args, options) => {
+  // Loads the native module (throws if unavailable → caught by defaultPtyFactory).
+  const nodePty = loadNodePty();
   // Self-heal node-pty's spawn-helper exec bit before the first spawn so pnpm
   // installs don't silently drop us to non-interactive pipes.
   ensurePtyHelperExecutable();
