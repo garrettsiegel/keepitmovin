@@ -8,6 +8,13 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    ignore:
+      # @types/node must track the oldest Node this package supports
+      # (engines: >=22.12), not the newest types available — otherwise tsc
+      # accepts APIs that are missing on the runtime users actually have.
+      # Raise this deliberately alongside an engines bump.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: development
