@@ -84,8 +84,8 @@ extra AI calls to do this, so it costs you nothing beyond what the tool would al
 ## How It Works
 
 1. keepitmovin loads `keepitmovin.config.json` (or built-in defaults if none exists yet).
-2. First run: keepitmovin asks which tools you want, in what order. Later runs: keepitmovin shows your
-   saved fallback order and asks whether to start it, change it, or start over.
+2. First run: keepitmovin asks which tools you want. Later runs: keepitmovin prints your saved
+   fallback order and starts immediately — run `kim providers` to change it.
 3. keepitmovin launches the first installed tool in a real pseudo-terminal — it looks and feels
    exactly like running that tool directly.
 4. keepitmovin creates `.keepitmovin/current/handoff.md` and tells the active tool to keep it updated.
@@ -256,13 +256,13 @@ locked in with tests. They're verified against reported messages, not against li
 
 ## Tool Updates
 
-By default, keepitmovin checks your selected tools each time it starts and **asks before** running
-their verified native updater when one is available (e.g. `claude update`, `codex update`,
-`kimi upgrade`, `opencode upgrade`, `grok update`, `agent update`).
-It never guesses an installer for a tool without a verified update command —
-those tools just show up as "add later" with setup guidance instead.
+keepitmovin does **not** check your tools for updates by default — starting `kim` never blocks on
+anything. Turn the check on and keepitmovin will run each tool's verified native updater when one
+is available (e.g. `claude update`, `codex update`, `kimi upgrade`, `opencode upgrade`,
+`grok update`, `agent update`), asking first. It never guesses an installer for a tool without a
+verified update command — those tools just show up as "add later" with setup guidance instead.
 
-Advanced users can change this in `keepitmovin.config.json`:
+To turn it on, add this to `keepitmovin.config.json`:
 
 ```json
 "updates": {

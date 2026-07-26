@@ -1,6 +1,5 @@
 import chalk from "chalk";
 import { restoreTerminal } from "../ui/restore.js";
-import { cancel, isCancel, select } from "@clack/prompts";
 import { loadConfig } from "../config/index.js";
 import { runHarness } from "../harness/index.js";
 import { describeProviderChain, getEnabledInteractiveProviders } from "../providers/interactive.js";
@@ -13,8 +12,7 @@ import type { CliOptions } from "../cli-options.js";
 import type { KeepitmovinConfig } from "../config/types.js";
 
 // On `kim`, decide which config to launch with. First run → wizard. Otherwise
-// confirm the saved chain (reuse / reconfigure / start fresh). Non-interactive
-// stdin reuses saved preferences without prompting.
+// launch straight into the saved chain — `kim providers` is how you change it.
 const resolveLaunchConfig = async (
   loadedConfig: KeepitmovinConfig,
   cwd: string,
@@ -24,39 +22,11 @@ const resolveLaunchConfig = async (
     return (await runSetupWizard({ cwd, configPath })).config;
   }
 
-  if (!process.stdin.isTTY) {
-    return loadedConfig;
-  }
-
   const enabled = getEnabledInteractiveProviders(loadedConfig);
   const chain = enabled.length > 0 ? describeProviderChain(enabled) : "(no tools turned on)";
-  console.log(`${chalk.bold("Your fallback order:")} ${chain}`);
+  console.log(`${chalk.bold("Your fallback order:")} ${chain} ${chalk.gray("(change it with `kim providers`)")}`);
 
-  const choice = await select({
-    message: "Start with this order?",
-    options: [
-      { label: "Yes, start", value: "launch" },
-      { label: "Change tools or order", value: "reconfigure" },
-      { label: "Start over (ignore saved settings)", value: "fresh" }
-    ],
-    initialValue: "launch"
-  });
-
-  if (isCancel(choice)) {
-    cancel("keepitmovin canceled.");
-    throw new Error("keepitmovin canceled.");
-  }
-
-  if (choice === "launch") {
-    return loadedConfig;
-  }
-
-  return (await runSetupWizard({
-    cwd,
-    configPath,
-    force: true,
-    reset: choice === "fresh"
-  })).config;
+  return loadedConfig;
 };
 
 export const runLaunchCommand = async (options: CliOptions): Promise<void> => {

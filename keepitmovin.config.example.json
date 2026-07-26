@@ -14,7 +14,7 @@
     "sessionsDir": ".keepitmovin/sessions"
   },
   "updates": {
-    "checkOnStart": true,
+    "checkOnStart": false,
     "mode": "prompt",
     "includeDisabledProviders": false
   },

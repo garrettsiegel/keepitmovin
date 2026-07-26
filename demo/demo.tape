@@ -42,10 +42,6 @@ Type "kim"
 Sleep 600ms
 Enter
 
-# "Start with this order?" — accept the default (Yes, start).
-Sleep 2200ms
-Enter
-
 # keepitmovin starts the first tool; it works and hits its usage limit, keepitmovin
 # shows the "Switching tools" notice, and the second tool reads the handoff and
 # continues.

@@ -82,7 +82,9 @@ export const keepitmovinConfigSchema = z.object({
     sessionsDir: z.string().default(DEFAULT_SESSIONS_DIR)
   }).prefault({}),
   updates: z.object({
-    checkOnStart: z.boolean().default(true),
+    // Off by default: `kim` should reach your tool without asking anything.
+    // Set `"checkOnStart": true` to have keepitmovin check for tool updates.
+    checkOnStart: z.boolean().default(false),
     mode: updateModeSchema.default("prompt"),
     includeDisabledProviders: z.boolean().default(false)
   }).prefault({}),

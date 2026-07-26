@@ -11,6 +11,7 @@ export interface CliOptions {
   maxRetries?: string;
   printPrompt?: boolean;
   provider?: string;
+  reset?: boolean;
   task?: string;
   tier?: RoutingTier;
   model?: string;

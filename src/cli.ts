@@ -119,6 +119,7 @@ program
   .option("-c, --config <path>", "Config file path")
   .option("--cwd <path>", "Working directory", process.cwd())
   .option("--all", "Browse every tool, including ones that aren't verified yet")
+  .option("--reset", "Start over from the built-in defaults instead of your saved settings")
   .action(async (rawOptions: CliOptions | Command, command?: Command) => {
     await runProvidersCommand(resolveCommandOptions(rawOptions, command));
   });

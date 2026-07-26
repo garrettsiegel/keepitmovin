@@ -8,7 +8,8 @@ export const runProvidersCommand = async (options: CliOptions): Promise<void> =>
       cwd: options.cwd ?? process.cwd(),
       configPath: options.config,
       force: true,
-      showAllCatalog: options.all ?? false
+      showAllCatalog: options.all ?? false,
+      reset: options.reset ?? false
     });
   } catch (error) {
     console.error(chalk.red(error instanceof Error ? error.message : String(error)));

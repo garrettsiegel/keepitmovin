@@ -5,6 +5,7 @@ import { ensureProviderFreshness, type UpdateCommandRunner } from "../src/setup/
 describe("ensureProviderFreshness", () => {
   it("runs verified native updater commands in always mode", async () => {
     const config = defaultConfig();
+    config.updates.checkOnStart = true;
     config.updates.mode = "always";
     const provider = {
       name: "claude",
@@ -46,6 +47,7 @@ describe("ensureProviderFreshness", () => {
 
   it("skips update commands in prompt mode when non-interactive", async () => {
     const config = defaultConfig();
+    config.updates.checkOnStart = true;
     expect(config.updates.mode).toBe("prompt");
     const provider = {
       name: "claude",
@@ -80,6 +82,7 @@ describe("ensureProviderFreshness", () => {
 
   it("reports missing tools without guessing an installer", async () => {
     const config = defaultConfig();
+    config.updates.checkOnStart = true;
     config.harness.providerOrder = ["antigravity"];
     config.harness.providers = [
       {

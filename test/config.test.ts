@@ -32,7 +32,7 @@ describe("config", () => {
       expect(defaultNames).not.toContain(hidden);
     }
     expect(loaded.config.updates).toMatchObject({
-      checkOnStart: true,
+      checkOnStart: false,
       mode: "prompt"
     });
   });
