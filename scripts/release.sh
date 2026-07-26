@@ -5,9 +5,8 @@
 # Usage:
 #   pnpm release <patch|minor|major|<semver>> [--dry-run] [--yes]
 #
-#   --dry-run   Run build/test/lint and `npm publish --dry-run` to preview the
-#               package contents. Makes no git commits/tags/pushes and does not
-#               publish for real.
+#   --dry-run   Run build/test/lint and preview the packed tarball contents.
+#               Makes no git commits/tags/pushes and does not publish.
 #   --yes, -y   Skip the interactive confirmation prompt (for CI/non-interactive use).
 #
 # Publishing itself happens in CI: pushing the tag triggers
@@ -106,7 +105,11 @@ if [[ "$DRY_RUN" == true ]]; then
   echo "==> [dry-run] Would bump $CURRENT_VERSION -> $NEXT_VERSION, commit, tag, and push."
   echo "==> [dry-run] CI would then publish v$NEXT_VERSION from the tag."
   echo "==> [dry-run] Previewing npm package contents (no git/npm mutation)"
-  npm publish --dry-run
+  # `npm publish --dry-run` checks the registry and fails with "cannot publish
+  # over the previously published versions" because the bump has not happened
+  # yet, which makes a healthy dry run look broken. `npm pack --dry-run` lists
+  # the exact same tarball contents without contacting the registry.
+  npm pack --dry-run
   echo "==> [dry-run] Done. Re-run without --dry-run to actually release."
   exit 0
 fi
