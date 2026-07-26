@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ensureArtifactsIgnored } from "../util/artifacts.js";
@@ -83,7 +84,17 @@ export const loadConfig = async (
     const detail = error instanceof Error ? error.message : String(error);
     throw new Error(`keepitmovin config is not valid JSON: ${resolvedPath}\n  ${detail}`);
   }
-  return { config: normalizeConfig(keepitmovinConfigSchema.parse(parsed)), path: resolvedPath };
+  // Same reasoning as the JSON branch above: a raw ZodError dumps an issue array
+  // with no indication of which file it came from, and reaches MCP clients as an
+  // opaque failure. prettifyError renders the issues as readable lines.
+  const result = keepitmovinConfigSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(
+      `keepitmovin config is not valid: ${resolvedPath}\n${z.prettifyError(result.error)}`
+    );
+  }
+
+  return { config: normalizeConfig(result.data), path: resolvedPath };
 };
 
 export const initConfig = async (

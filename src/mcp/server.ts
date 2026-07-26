@@ -47,11 +47,13 @@ export const createKeepitmovinMcpServer = (options: {
   }));
 
   server.registerTool("get_current_handoff", {
+    title: "Get current handoff",
     description: "Read the active project's sanitized keepitmovin handoff.",
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true }
   }, async () => ({ content: [{ type: "text", text: await readMcpHandoff(await root()) }] }));
 
   server.registerTool("list_recent_sessions", {
+    title: "List recent sessions",
     description: "List recent sanitized keepitmovin session outcomes without transcripts.",
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true }
   }, async () => ({

@@ -241,3 +241,24 @@ describe("config", () => {
     expect(await readFile(markerPath, "utf8")).toBe("*\n");
   });
 });
+
+describe("loadConfig — invalid config files", () => {
+  it("names the file and the offending field when the schema rejects it", async () => {
+    // A raw ZodError dumps an issue array with no indication of which file it
+    // came from, and reached MCP clients as an opaque failure.
+    const dir = await makeTempDir("kim-config-bad");
+    const configPath = path.join(dir, "keepitmovin.config.json");
+    await writeFile(configPath, JSON.stringify({ harness: { idleTimeoutMs: "soon" } }), "utf8");
+
+    await expect(loadConfig(dir, configPath)).rejects.toThrow(/is not valid: .*keepitmovin\.config\.json/);
+    await expect(loadConfig(dir, configPath)).rejects.toThrow(/idleTimeoutMs/);
+  });
+
+  it("names the file when the JSON itself is malformed", async () => {
+    const dir = await makeTempDir("kim-config-broken");
+    const configPath = path.join(dir, "keepitmovin.config.json");
+    await writeFile(configPath, "{ not json", "utf8");
+
+    await expect(loadConfig(dir, configPath)).rejects.toThrow(/is not valid JSON: .*keepitmovin\.config\.json/);
+  });
+});

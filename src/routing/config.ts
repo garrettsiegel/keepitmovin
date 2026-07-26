@@ -17,4 +17,4 @@ export const routingConfigSchema = z.object({
   allowOverride: z.boolean().default(DEFAULT_ROUTING_CONFIG.allowOverride),
   askOutcome: z.boolean().default(DEFAULT_ROUTING_CONFIG.askOutcome),
   telemetry: z.boolean().default(DEFAULT_ROUTING_CONFIG.telemetry)
-}).default(DEFAULT_ROUTING_CONFIG);
+}).prefault({});

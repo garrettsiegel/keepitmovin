@@ -77,23 +77,15 @@ export const keepitmovinConfigSchema = z.object({
   ]),
   context: z.object({
     maxDiffChars: z.number().int().positive().default(20_000)
-  }).default({
-    maxDiffChars: 20_000
-  }),
+  }).prefault({}),
   logs: z.object({
     sessionsDir: z.string().default(DEFAULT_SESSIONS_DIR)
-  }).default({
-    sessionsDir: DEFAULT_SESSIONS_DIR
-  }),
+  }).prefault({}),
   updates: z.object({
     checkOnStart: z.boolean().default(true),
     mode: updateModeSchema.default("prompt"),
     includeDisabledProviders: z.boolean().default(false)
-  }).default({
-    checkOnStart: true,
-    mode: "prompt",
-    includeDisabledProviders: false
-  }),
+  }).prefault({}),
   routing: routingConfigSchema,
   harness: z.object({
     setupComplete: z.boolean().default(false),
