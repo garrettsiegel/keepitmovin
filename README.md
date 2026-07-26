@@ -54,8 +54,9 @@ Or run it without installing anything:
 npx keepitmovin
 ```
 
-On first run, keepitmovin starts a guided setup wizard: it detects which tools you have installed and
-lets you pick which ones to use and in what order.
+On first run, keepitmovin detects which tools you have installed and asks one question: which ones
+do you want to use. It suggests a fallback order and offers to change it — accept and you're
+running. Every run after that starts immediately.
 
 ## The Important Limitation
 
@@ -139,7 +140,8 @@ usage.
 
 ### Task Routing And Model Selection
 
-Task routing is opt-in during setup. When enabled, `kim` asks for a task if one wasn't given
+Task routing is off by default; turn it on with `"routing": { "enabled": true }` in
+`keepitmovin.config.json`. When enabled, `kim` asks for a task if one wasn't given
 on the command line, classifies it locally, and picks a model and reasoning effort within your
 saved fallback order. It never changes that order or makes network calls for routing.
 

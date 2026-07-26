@@ -1,17 +1,15 @@
-import {
-  box,
-  confirm,
-  groupMultiselect,
-  intro,
-  log,
-  note,
-  outro
-} from "@clack/prompts";
+import { confirm, groupMultiselect, intro, log, note, outro } from "@clack/prompts";
 import process from "node:process";
 import chalk from "chalk";
 import { defaultConfig, loadConfig, saveConfig } from "../config/index.js";
 import { isHarnessControllable } from "../providers/catalog.js";
-import { buildStackOptions, chooseProviderOrder, renderCatalogPreview, unwrapPrompt } from "./prompts.js";
+import {
+  buildStackOptions,
+  chooseProviderOrder,
+  defaultProviderOrder,
+  renderCatalogPreview,
+  unwrapPrompt
+} from "./prompts.js";
 import { renderProviderOrderSummary } from "../ui/terminal.js";
 import { getSetupState } from "../providers/tool-status.js";
 import { assertConfigTrusted } from "../config/trust.js";
@@ -44,17 +42,6 @@ export const applyProviderOrder = (
   }
 });
 
-export const applyRoutingPreference = (
-  config: KeepitmovinConfig,
-  enabled: boolean
-): KeepitmovinConfig => ({
-  ...config,
-  routing: {
-    ...config.routing,
-    enabled
-  }
-});
-
 export const runSetupWizard = async (
   options: SetupOptions
 ): Promise<{ config: KeepitmovinConfig; configPath: string }> => {
@@ -78,33 +65,9 @@ export const runSetupWizard = async (
   }
 
   intro(chalk.bgCyan.black(" keepitmovin "));
-  box(
-    [
-      "keepitmovin runs your coding tools in one terminal, in a fallback order you choose.",
-      "When one tool hits a limit, it hands the next tool your handoff file so you keep going."
-    ].join("\n"),
-    "What this does",
-    {
-      rounded: true
-    }
+  log.message(
+    chalk.gray("Pick your tools. keepitmovin runs the first one, and hands the next one your handoff file when it hits a limit.")
   );
-  note(
-    [
-      "1. Pick the tools you want and the order to try them.",
-      "2. keepitmovin starts the first installed tool for you.",
-      "3. If it hits a limit, keepitmovin switches tools using .keepitmovin/current/handoff.md."
-    ].join("\n"),
-    "How it works"
-  );
-
-  if (startingConfig.updates.checkOnStart) {
-    note(
-      startingConfig.updates.mode === "always"
-        ? "On each start, keepitmovin checks your tools for updates and installs them automatically."
-        : "On each start, keepitmovin checks your tools for updates and asks before installing any.",
-      "Tool updates"
-    );
-  }
 
   if (options.showAllCatalog) {
     note(renderCatalogPreview(state.catalogStatuses), "Other tools");
@@ -134,35 +97,27 @@ export const runSetupWizard = async (
     throw new Error("Pick at least one installed tool to continue.");
   }
 
-  const providerOrder = await chooseProviderOrder(
+  // Suggest an order rather than asking for one; only walk the per-slot picker
+  // when someone actually wants to change it.
+  const suggestedOrder = defaultProviderOrder(
     selectedProviders,
-    startingConfig.harness.providers
-  );
-  const chainSummary = renderProviderOrderSummary(
     startingConfig.harness.providers,
-    providerOrder
+    startingConfig.harness.providerOrder
   );
-  note(chainSummary, "Your fallback order");
+  note(
+    renderProviderOrderSummary(startingConfig.harness.providers, suggestedOrder),
+    "Your fallback order"
+  );
 
-  const wantsOpenRouter = selectedProviders.includes("cline")
-    ? unwrapPrompt(await confirm({
-        message: "Do you plan to use Cline with OpenRouter models like DeepSeek?",
-        initialValue: true
-      }))
-    : false;
-
-  if (wantsOpenRouter) {
-    log.info("keepitmovin will keep Cline configurable. Add OpenRouter-specific Cline flags once the Cline CLI is installed and verified.");
-  }
-
-  const routingEnabled = unwrapPrompt(await confirm({
-    message: "Turn on smart task routing? (picks a model per task; asks how it went at the end)",
-    initialValue: startingConfig.routing.enabled
+  const wantsReorder = selectedProviders.length > 1 && unwrapPrompt(await confirm({
+    message: "Change this order?",
+    initialValue: false
   }));
-  const config = applyRoutingPreference(
-    applyProviderOrder(startingConfig, providerOrder),
-    routingEnabled
-  );
+  const providerOrder = wantsReorder
+    ? await chooseProviderOrder(selectedProviders, startingConfig.harness.providers)
+    : suggestedOrder;
+
+  const config = applyProviderOrder(startingConfig, providerOrder);
   const configPath = await saveConfig(options.cwd, config, options.configPath);
   outro(`Saved. Run \`kim\` to start. (config: ${configPath})`);
 

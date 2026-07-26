@@ -2,7 +2,8 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config/index.js";
-import { applyProviderOrder, applyRoutingPreference, getSetupState } from "../src/setup/index.js";
+import { applyProviderOrder, getSetupState } from "../src/setup/index.js";
+import { defaultProviderOrder } from "../src/setup/prompts.js";
 import { makeTempDir } from "./support/tmp.js";
 
 
@@ -17,12 +18,23 @@ describe("setup helpers", () => {
     expect(config.harness.providers.find((provider) => provider.name === "kimi")?.enabled).toBe(false);
   });
 
-  it("persists the routing opt-in without changing provider order", () => {
-    const ordered = applyProviderOrder(defaultConfig(), ["codex", "claude"]);
-    const config = applyRoutingPreference(ordered, true);
+  it("suggests an order without prompting: saved order first, then catalog order", () => {
+    const providers = defaultConfig().harness.providers;
 
-    expect(config.routing.enabled).toBe(true);
-    expect(config.harness.providerOrder).toEqual(["codex", "claude"]);
+    // A tool the user already ordered keeps its place; a newly picked one is
+    // appended in catalog order rather than triggering a per-slot question.
+    expect(defaultProviderOrder(["kimi", "codex", "claude"], providers, ["codex", "claude"]))
+      .toEqual(["codex", "claude", "kimi"]);
+  });
+
+  it("falls back to catalog order when nothing was saved", () => {
+    const providers = defaultConfig().harness.providers;
+    const catalogOrder = providers.map((provider) => provider.name);
+    const picked = ["opencode", "claude", "codex"];
+
+    expect(defaultProviderOrder(picked, providers, [])).toEqual(
+      [...picked].sort((left, right) => catalogOrder.indexOf(left) - catalogOrder.indexOf(right))
+    );
   });
 
   it("detects setup state and provider commands from config", async () => {

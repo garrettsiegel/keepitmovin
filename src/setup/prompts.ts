@@ -12,6 +12,29 @@ export const unwrapPrompt = <T>(value: T | symbol): T => {
   return value;
 };
 
+/**
+ * The order keepitmovin suggests without asking: whatever the config already
+ * said, then catalog order for anything newly picked. Good enough that most
+ * people never need the reorder prompt below.
+ */
+export const defaultProviderOrder = (
+  selectedProviders: string[],
+  providers: InteractiveProviderConfig[],
+  savedOrder: string[]
+): string[] => {
+  const rank = (name: string): number => {
+    const saved = savedOrder.indexOf(name);
+    if (saved >= 0) {
+      return saved;
+    }
+
+    const catalogIndex = providers.findIndex((provider) => provider.name === name);
+    return savedOrder.length + (catalogIndex < 0 ? providers.length : catalogIndex);
+  };
+
+  return [...selectedProviders].sort((left, right) => rank(left) - rank(right));
+};
+
 export const chooseProviderOrder = async (
   selectedProviders: string[],
   providers: InteractiveProviderConfig[]

@@ -23,7 +23,7 @@ export {
 } from "./routing/model.js";
 export { classifyTask, escalateTier, overrideTier } from "./routing/classify.js";
 export { readLatestSessionLog, readRecentSessionLogs, writeSessionLog } from "./session/log.js";
-export { applyProviderOrder, applyRoutingPreference, getSetupState, runSetupWizard } from "./setup/index.js";
+export { applyProviderOrder, getSetupState, runSetupWizard } from "./setup/index.js";
 export { isRoutingRequested, resolveRouteForLaunch, resolveTaskForLaunch } from "./routing/launch.js";
 export { RollingTranscript } from "./harness/transcript.js";
 export {
