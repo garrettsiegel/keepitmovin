@@ -9,9 +9,10 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
   <p class="eyebrow">Docs</p>
   <h1>Configuration</h1>
   <p>
-    You never need a config file to start — the setup wizard writes one for
-    you. Everything below lives in <code>keepitmovin.config.json</code> in your
-    project directory and is optional.
+    You never need a config file to start — setup writes one for you.
+    Everything below lives in <code>keepitmovin.config.json</code> in your
+    project directory and is optional, so keep your file to just the settings
+    you actually change.
   </p>
 
   <h2>Your tools and fallback order</h2>
@@ -50,7 +51,6 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
     <thead><tr><th>Field</th><th>Default</th><th>Meaning</th></tr></thead>
     <tbody>
       <tr><td><code>enabled</code></td><td><code>true</code></td><td>Enable conservative loop, burn, and stall warnings.</td></tr>
-      <tr><td><code>action</code></td><td><code>"warn"</code></td><td>Warning-only; automatic switching is intentionally unavailable.</td></tr>
     </tbody>
   </table>
   <p>
@@ -78,10 +78,10 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
 
   <h2>Task routing</h2>
   <p>
-    Opt-in during setup. When enabled, keepitmovin classifies your task
-    locally and picks a model and reasoning effort within your fallback
-    order. It never changes your order and makes no network calls for
-    routing.
+    Off by default. Turn it on with <code>"routing": &#123; "enabled": true &#125;</code>.
+    When enabled, keepitmovin classifies your task locally and picks a model
+    and reasoning effort within your fallback order. It never changes your
+    order and makes no network calls for routing.
   </p>
   <pre><code>kim "Investigate the intermittent auth failure"
 kim --tier deep "Implement the approved plan"</code></pre>
@@ -94,9 +94,10 @@ kim --tier deep "Implement the approved plan"</code></pre>
 
   <h2>Tool updates</h2>
   <p>
-    On start, keepitmovin checks your selected tools and <strong>asks
-    before</strong> running a tool's own verified updater. It never guesses
-    an installer. Configure under <code>updates</code>:
+    Off by default, so starting <code>kim</code> never blocks. Turn it on and
+    keepitmovin <strong>asks before</strong> running a tool's own verified
+    updater. It never guesses an installer. Configure under
+    <code>updates</code>:
   </p>
   <table>
     <thead>

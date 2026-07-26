@@ -132,8 +132,22 @@ entry points. There is no public barrel — keepitmovin ships as a `bin`, not a 
   bootstrap paste (their one-shot prompt flags exit after a turn). Keep transport prompts out of
   final transcript excerpts when a tool merely echoes its argv.
 - **Routing is local and opt-in.** The classifier must remain deterministic and fail soft when the
-  Codex model cache is missing. Automatic routing never selects `ultra`; explicit overrides must
-  be validated against the model's advertised reasoning levels.
+  Codex model cache is missing. Automatic routing never selects `ultra`. `--tier` is the only
+  routing flag; it is validated against `routingTierSchema` before it reaches the classifier.
+- **`kim` must reach the user's tool without asking anything.** Nothing on the launch path may add
+  a prompt: not update checks (`updates.checkOnStart` defaults to false for this reason), not a
+  chain confirmation, not a routing confirmation. Setup asks one question; every later run asks
+  zero. Adding a prompt to the launch path is a regression even when the prompt is useful — put it
+  behind a command instead.
+- **A config option needs a reason to exist.** Eleven were removed in v4 because their only sane
+  value was the default; each was replaced by a constant in `config/config-schema.ts`. Before
+  adding one, check that two users would plausibly set it differently. If a test is the only thing
+  that needs to vary a value, take it as an optional function parameter instead — see
+  `NudgeTiming` in `handoff/refresh.ts`, threaded through `runHarness` as `nudgeTiming`.
+- **Removed config keys and removed provider names must still load.** Old configs are parsed with
+  the current schema, which strips unknown keys, and an unrecognized provider name is kept as a
+  user-defined command rather than rejected. `test/config.test.ts` pins this against a real v3
+  config fixture (`test/fixtures/legacy-v3-config.json`); keep the fixture when adding migrations.
 
 ## When Something Notable Happens
 

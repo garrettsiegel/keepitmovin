@@ -8,6 +8,32 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 ### Changed — BREAKING
 
+- **`kim` no longer asks anything before starting.** It prints your fallback order and launches.
+  `kim providers` (now with `--reset`) is the one way to change tools or order.
+- **First-run setup asks one question instead of six.** It suggests a fallback order and offers a
+  single optional reorder. Gone: three info panes, the Cline/OpenRouter question, the routing
+  opt-in, and the per-slot ordering prompts.
+- **`kim init` removed** — the default run and `kim providers` already create the config and
+  folders. **`kim setup` is now a hidden alias of `kim providers`**; the two ran identical code.
+- **Tool update checks are off by default.** Set `updates.checkOnStart` to `true` to opt in.
+- **Eleven config options removed**, each fixed at its former default: `context.maxDiffChars`,
+  `logs.sessionsDir`, `harness.transcriptLimitChars`, `harness.handoffPath`,
+  `harness.handoffArchiveDir`, `harness.autoAppendCheckpoints`, `harness.watchdog.action`, the four
+  `harness.handoffRefresh.nudge.*` fields, and the global `fallbackOn` (per-provider `fallbackOn`
+  still works). Configs containing them still load; the removed keys are ignored.
+  Artifact paths being constants also means a mis-set path can no longer aim `kim clear` at your
+  own files.
+- **Routing keeps only `--tier`.** `--model`, `--effort` and `--no-route` are gone, along with the
+  mid-launch tier confirmation and the end-of-session "how did it go?" prompt. Routing config is a
+  single `enabled` switch.
+- **`kim mcp` now serves directly**; `kim mcp status` / `install` / `remove` become
+  `kim mcp install --status` / `kim mcp install` / `kim mcp install --remove`. `kim mcp serve`
+  still works, so existing MCP client configs keep running.
+- **Unverified tools removed from the catalog**: Cline, Aider, Goose, Amp, Factory Droid and the
+  OpenRouter gateway, plus the hidden-provider machinery behind them. A config naming one still
+  loads — the entry is kept as your own command.
+- **No public library API.** The package ships as a `bin`; `main`, `types` and the module exports
+  are removed. Nothing imported them.
 - **Requires Node.js 22.12 or newer** (was 20). Node 20 left active support in October 2025 and is
   security-only until April 2027. The bump unblocks commander 15 and execa 10, both of which
   require Node 22 — holding them back would have frozen those dependencies until 2027.
