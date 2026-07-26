@@ -6,6 +6,18 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 ## [Unreleased]
 
+### Changed — BREAKING
+
+- **Requires Node.js 22.12 or newer** (was 20). Node 20 left active support in October 2025 and is
+  security-only until April 2027. The bump unblocks commander 15 and execa 10, both of which
+  require Node 22 — holding them back would have frozen those dependencies until 2027.
+- **Removed `formatGitContext` and the `CompactionProbeKind` type from the public exports.** Neither
+  was referenced anywhere, including at its own call site. Use `formatGitSnapshot` and
+  `CompactionProbeSpec["kind"]`.
+- `-c=value` is no longer accepted for the short `--config` flag. Commander treats `=` as a
+  separator for long options only, so use `-c value`, `-cvalue`, or `--config=value`. This drops a
+  hand-rolled argv scan that duplicated commander's parsing and mis-handled `-cvalue`.
+
 ### Added
 
 - Handoff receipts: receiving tools restate the goal and next action; missing receipts warn after
@@ -18,6 +30,8 @@ All notable changes to keepitmovin are documented here. The format is based on
   Stripe/SendGrid tokens, plus a name-based catch-all for secret-shaped assignments.
 - Public exports for `detectLiveFailure`, `redactSecrets`, `isSafeToRecursivelyDelete` and
   `assessHandoffQuality`.
+- `./package.json` is now reachable through the package `exports` map, so tooling that reads it
+  (bundlers, version checkers) no longer hits ERR_PACKAGE_PATH_NOT_EXPORTED.
 
 ### Fixed
 
@@ -60,6 +74,9 @@ All notable changes to keepitmovin are documented here. The format is based on
 - Site: upgraded Astro 5 -> 7, clearing high-severity reflected-XSS and host-header-SSRF
   advisories, and pinned `postcss >= 8.5.18` / `sharp >= 0.35.0`. The site audit reports no known
   vulnerabilities and is a blocking CI check again.
+- `src/` is grouped into 13 domain folders (harness, providers, handoff, config, routing, mcp,
+  setup, detection, probes, pty, session, ui, util) instead of 61 flat files distinguished by
+  filename prefix. Internal only — the public entry points are unchanged.
 - Releases publish from CI on a tag push using npm trusted publishing (OIDC), with provenance and
   no stored npm token. `pnpm release` now tags and pushes; it no longer publishes directly.
 - `exports` lists `types` before `import`, as condition order requires.

@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/keepitmovin.svg)](https://www.npmjs.com/package/keepitmovin)
 [![ci](https://github.com/garrettsiegel/keepitmovin/actions/workflows/ci.yml/badge.svg)](https://github.com/garrettsiegel/keepitmovin/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/npm/l/keepitmovin.svg)](./LICENSE)
-[![Node >=20](https://img.shields.io/node/v/keepitmovin.svg)](https://nodejs.org)
+[![Node >=22.12](https://img.shields.io/node/v/keepitmovin.svg)](https://nodejs.org)
 
 ### Agents hit limits. Your work doesn't.
 
@@ -319,7 +319,7 @@ not an MCP client. keepitmovin never upgrades another tool on your behalf.
 
 ## Building From Source / Contributing
 
-keepitmovin is a small TypeScript CLI (Node 20+). To work on it directly:
+keepitmovin is a small TypeScript CLI (Node 22.12+). To work on it directly:
 
 ```sh
 git clone https://github.com/garrettsiegel/keepitmovin.git

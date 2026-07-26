@@ -4,7 +4,7 @@ Thanks for helping make keepitmovin better. It's a small TypeScript CLI, so the 
 
 ## Getting set up
 
-You need Node 20+ and [pnpm](https://pnpm.io) 10.23.0 (via corepack: `corepack enable`).
+You need Node 22.12+ and [pnpm](https://pnpm.io) 10.23.0 (via corepack: `corepack enable`).
 
 ```sh
 git clone https://github.com/garrettsiegel/keepitmovin.git

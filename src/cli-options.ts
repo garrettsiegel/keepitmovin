@@ -35,34 +35,20 @@ export const splitExplicitTaskArgv = (
   };
 };
 
-export const readOptionFromArgv = (names: string[]): string | undefined => {
-  const separator = process.argv.indexOf("--");
-  const argv = separator >= 0 ? process.argv.slice(0, separator) : process.argv;
-  for (const [index, arg] of argv.entries()) {
-    for (const name of names) {
-      if (arg === name) {
-        return argv[index + 1];
-      }
-
-      if (arg.startsWith(`${name}=`)) {
-        return arg.slice(name.length + 1);
-      }
-    }
-  }
-
-  return undefined;
-};
-
+/**
+ * Normalizes a subcommand's options.
+ *
+ * `--config` and `--cwd` are declared on the root program as well as on each
+ * subcommand, so `kim --config x.json doctor` parses them onto the *parent*.
+ * `optsWithGlobals()` merges the parent's values in (the subcommand's own win),
+ * which is what this used to approximate by re-scanning process.argv by hand --
+ * a second parser that missed commander's concatenated short-option form
+ * (`-cvalue`) and ignored which subcommand was actually running.
+ */
 export const resolveCommandOptions = (
   rawOptions: CliOptions | Command,
   command?: Command
 ): CliOptions => {
   const commandCandidate = command ?? (rawOptions instanceof Command ? rawOptions : undefined);
-  const parsedOptions = commandCandidate?.opts<CliOptions>() ?? rawOptions as CliOptions;
-
-  return {
-    ...parsedOptions,
-    config: readOptionFromArgv(["--config", "-c"]) ?? parsedOptions.config,
-    cwd: readOptionFromArgv(["--cwd"]) ?? parsedOptions.cwd
-  };
+  return commandCandidate?.optsWithGlobals<CliOptions>() ?? (rawOptions as CliOptions);
 };
