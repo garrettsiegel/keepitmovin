@@ -4,7 +4,7 @@ All notable changes to keepitmovin are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.0.0] — 2026-07-26
 
 ### Changed — BREAKING
 
@@ -34,6 +34,15 @@ All notable changes to keepitmovin are documented here. The format is based on
   loads — the entry is kept as your own command.
 - **No public library API.** The package ships as a `bin`; `main`, `types` and the module exports
   are removed. Nothing imported them.
+
+### Changed
+
+- The README hero GIF is re-recorded against the prompt-free launch.
+
+## [3.0.0] — 2026-07-26
+
+### Changed — BREAKING
+
 - **Requires Node.js 22.12 or newer** (was 20). Node 20 left active support in October 2025 and is
   security-only until April 2027. The bump unblocks commander 15 and execa 10, both of which
   require Node 22 — holding them back would have frozen those dependencies until 2027.
@@ -215,7 +224,10 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 - Removed the non-interactive task mode; keepitmovin is the interactive session harness only.
 
-[Unreleased]: https://github.com/garrettsiegel/keepitmovin/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/garrettsiegel/keepitmovin/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/garrettsiegel/keepitmovin/compare/v3.0.0...v4.0.0
+[3.0.0]: https://github.com/garrettsiegel/keepitmovin/compare/v2.1.0...v3.0.0
+[2.1.0]: https://github.com/garrettsiegel/keepitmovin/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/garrettsiegel/keepitmovin/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/garrettsiegel/keepitmovin/compare/v1.6.1...v2.0.0
 [1.6.1]: https://github.com/garrettsiegel/keepitmovin/compare/v1.6.0...v1.6.1
