@@ -66,6 +66,21 @@ Each new pattern needs a test proving all three cases (see `test/failure-detecti
 The failure-detection rules are subtle — read the **Gotchas** section of
 [CLAUDE.md](./CLAUDE.md) before touching detection code.
 
+## Releasing
+
+`pnpm release <patch|minor|major|<semver>>` runs build/test/lint, bumps the version, commits and
+tags it, and pushes `main` + tags to origin. Pushing the tag triggers the release workflow, which
+rebuilds from a clean checkout and publishes to npm with provenance — nothing is published from a
+laptop. CI authenticates with npm trusted publishing (OIDC), so no npm token is stored in this repo.
+
+The script refuses to run from a branch other than `main`, with a dirty working tree, or out of sync
+with `origin/main`, and prompts before it pushes (`--yes` skips the prompt). Preview everything,
+including the packed npm contents, with no git or npm mutation:
+
+```sh
+pnpm release patch --dry-run
+```
+
 ## Reporting bugs and requesting features
 
 Use the issue templates. For bugs, include your OS, `kim --version`, which tool was running,
