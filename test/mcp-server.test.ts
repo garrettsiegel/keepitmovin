@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config/index.js";
 import { readMcpHandoff } from "../src/mcp/data.js";
 import { createKeepitmovinMcpServer } from "../src/mcp/server.js";
-import { writeSessionLog } from "../src/session/log.js";
+import { writeSessionLog } from "../src/util/session-log.js";
 import { makeTempDir } from "./support/tmp.js";
 
 const project = async (): Promise<string> => {

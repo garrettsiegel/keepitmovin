@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { ensureArtifactsIgnored } from "../util/artifacts.js";
+import { ensureArtifactsIgnored } from "../util/gitignore-marker.js";
 import type { KeepitmovinConfig } from "./types.js";
 import {
   mergeCatalogInteractiveProviders,
@@ -16,7 +16,7 @@ import {
   keepitmovinConfigSchema
 } from "./config-schema.js";
 
-// Re-exported so existing importers (and the public barrel) keep working.
+// Re-exported so existing importers keep working.
 export * from "./config-schema.js";
 /**
  * Writes the `.keepitmovin/.gitignore` marker so handoff files and session logs

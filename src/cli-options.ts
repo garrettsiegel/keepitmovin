@@ -1,5 +1,7 @@
+import chalk from "chalk";
 import { Command } from "commander";
-import type { ReasoningEffort, RoutingTier } from "./config/types.js";
+import { loadConfig } from "./config/index.js";
+import type { KeepitmovinConfig, RoutingTier } from "./config/types.js";
 
 export const EXPLICIT_TASK_SENTINEL = "__keepitmovin_explicit_task__";
 
@@ -11,9 +13,6 @@ export interface CliOptions {
   task?: string;
   yes?: boolean;
   tier?: RoutingTier;
-  model?: string;
-  effort?: ReasoningEffort;
-  route?: boolean;
 }
 
 export const splitExplicitTaskArgv = (
@@ -32,6 +31,26 @@ export const splitExplicitTaskArgv = (
     ...(task ? { task } : {})
   };
 };
+
+/**
+ * Wraps a command body with the prologue and epilogue every command repeated:
+ * resolve the working directory, load the config, and turn a thrown error into
+ * one red line plus a non-zero exit code instead of a stack trace.
+ */
+export const withConfig =
+  <T extends CliOptions>(
+    run: (context: { cwd: string; config: KeepitmovinConfig; options: T }) => Promise<void>
+  ) =>
+    async (options: T): Promise<void> => {
+      const cwd = options.cwd ?? process.cwd();
+      try {
+        const { config } = await loadConfig(cwd, options.config);
+        await run({ cwd, config, options });
+      } catch (error) {
+        console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+        process.exitCode = 1;
+      }
+    };
 
 /**
  * Normalizes a subcommand's options.

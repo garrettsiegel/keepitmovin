@@ -15,7 +15,7 @@ import {
   splitExplicitTaskArgv,
   type CliOptions
 } from "./cli-options.js";
-import { routingTierSchema } from "./routing/config.js";
+import { routingTierSchema } from "./config/routing-schema.js";
 import { installTerminalRestoreHook } from "./ui/restore.js";
 import type { RoutingTier } from "./config/types.js";
 

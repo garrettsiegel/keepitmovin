@@ -43,19 +43,19 @@ Please:
 
 Every tool keepitmovin knows about is defined in one place — the provider catalog:
 
-- `src/provider-catalog-data.ts` and `src/provider-catalog-more.ts` — the fully-supported tools.
-- `src/provider-catalog-extra.ts` — hidden tools (kept in the catalog, off by default).
-- `src/provider-catalog-types.ts` — the entry shape.
+- `src/providers/catalog-entries.ts` — every tool, in one list.
+- `src/providers/catalog-types.ts` — the entry shape.
 
 To add a tool, add one `ProviderCatalogEntry`. Everything downstream (setup wizard, `doctor`,
-updates, config defaults) reads the catalog, so no other wiring is needed.
+updates, config defaults) reads the catalog, so no other wiring is needed. **Position matters**:
+catalog order is the default fallback chain, so put the entry where it belongs in that sequence.
 
 **"Full support" means the tool's real limit messages are detected.** A tool is only reliable in a
 fallback order if keepitmovin can recognize when it's blocked. So a fully-supported entry needs a
 curated `limitPatterns` list — the exact banner strings the tool prints when it hits a usage limit,
 researched from the tool's **source code, GitHub issues, or official docs**. Do not invent
 plausible-looking strings; if you can't confirm a banner from a primary source, say so in a code
-comment and leave the tool relying on generic detection (or hidden).
+comment and leave the tool relying on generic detection rather than adding it.
 
 Each new pattern needs a test proving all three cases (see `test/failure-detection.test.ts`):
 

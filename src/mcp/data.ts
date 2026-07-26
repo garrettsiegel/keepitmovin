@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { DEFAULT_HANDOFF_PATH, DEFAULT_SESSIONS_DIR, loadConfig } from "../config/index.js";
 import { redactSecrets } from "../util/redact.js";
-import { readRecentSessionLogs } from "../session/log.js";
+import { readRecentSessionLogs } from "../util/session-log.js";
 
 export interface McpSessionSummary {
   startedAt: string;

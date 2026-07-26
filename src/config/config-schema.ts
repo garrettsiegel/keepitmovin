@@ -3,7 +3,7 @@ import {
   getDefaultInteractiveProviders,
   getDefaultProviderOrder
 } from "../providers/catalog.js";
-import { routingConfigSchema } from "../routing/config.js";
+import { routingConfigSchema } from "./routing-schema.js";
 
 // The configuration contract. Split out of config.ts to keep both files under the
 // project's 250-LOC limit: this file is the schema and its defaults, config.ts is

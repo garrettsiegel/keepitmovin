@@ -44,26 +44,25 @@ mirrors stdin/stdout, keeps a `RollingTranscript`, watches live output for failu
 on failure or `Ctrl+]`.
 
 `src/` is grouped by domain. Each folder is self-contained; the only files at the root are the CLI
-entry points and the public barrel.
+entry points. There is no public barrel — keepitmovin ships as a `bin`, not a library, so
+`package.json` declares no `main`/`types` and nothing re-exports the internals.
 
 | Folder | Role |
 |---|---|
-| `src/harness/` | The orchestration loop. `index.ts` = `runHarness` (provider loop, checkpoints, commercial-break interstitial); `session.ts` = `waitForProvider` (one provider attempt); `io.ts` (stdin/stdout/signal wiring), `attempt.ts` + `attempt-log.ts`, `observers.ts`, `watchers.ts`, `finalize.ts`, plus `transcript.ts`, `bootstrap-input.ts`, `switch-menu.ts` and the `watchdog*.ts` signals. |
+| `src/harness/` | The orchestration loop. `index.ts` = `runHarness` (provider loop, checkpoints, commercial-break interstitial); `session.ts` = `waitForProvider` (one provider attempt); `io.ts` (stdin/stdout/signal wiring), `attempt.ts` + `attempt-log.ts`, `observers.ts`, `watchers.ts`, `finalize.ts`, plus `transcript.ts`, `bootstrap-input.ts`, `switch-menu.ts` and the `watchdog*.ts` signals. Several are single-caller by design: `session.ts` is already at the LOC cap, so folding them back in would produce one ~550-line file on the least-unit-tested path in the repo. |
 | `src/detection/` | `failure-detection.ts` (live/post-exit classification, the prose-vs-status-line guard, manual-switch key mapping) and `errors.ts` (error taxonomy + generic pattern matching). |
-| `src/providers/` | **Single source of truth** for every known tool. `catalog.ts` is the public API; `catalog-entries.ts` holds the `PROVIDER_CATALOG` assembler plus the first five supported tools, `catalog-entries-continued.ts` the other four (split only to stay under 250 LOC — catalog order across the two drives the default fallback chain). Hidden tools (`supportLevel: "hidden"`) live in `catalog-hidden.ts`: kept so existing configs keep launching, but excluded from defaults, the setup wizard and docs (see `isHiddenCatalogEntry`/`isHiddenProviderName`). Also `interactive.ts`, `health.ts`, `tool-status.ts`. Do not scatter provider details elsewhere. |
+| `src/providers/` | **Single source of truth** for every known tool. `catalog.ts` is the public API; `catalog-entries.ts` is the whole `PROVIDER_CATALOG` in one list — **its order is the default fallback chain**, so entry order is behavior. It is pure data and exempt from the 250-LOC cap. Also `catalog-types.ts`, `interactive.ts`, `health.ts`, `tool-status.ts`. Do not scatter provider details elsewhere. |
 | `src/config/` | `index.ts` (load/save/normalize), `config-schema.ts` (the zod contract + defaults — all config shape changes go here), `types.ts` (inferred from the schema), `trust.ts`. |
-| `src/handoff/` | `file.ts` builds and maintains the `.keepitmovin/current/handoff.md` continuity artifact; `refresh.ts` and `quality.ts` refresh mechanical sections and measure whether the task/narrative was recorded; plus `receipt.ts`, `artifacts.ts`, `prompts.ts`. |
+| `src/handoff/` | `file.ts` builds and maintains the `.keepitmovin/current/handoff.md` continuity artifact; `refresh.ts` and `quality.ts` refresh mechanical sections and measure whether the task/narrative was recorded; `cleanup.ts` resolves handoff paths and does the destructive `kim clear` work; plus `receipt.ts`, `prompts.ts`. |
 | `src/probes/` | `usage.ts` and `compaction.ts` — reading a tool's own on-disk usage/compaction state. |
-| `src/routing/` | `classify.ts` (deterministic task classification), `model.ts` (local Codex model discovery), `launch.ts` (launch-time routing/overrides), `config.ts`. |
+| `src/routing/` | `classify.ts` (deterministic task classification), `model.ts` (local Codex model discovery), `launch.ts` (launch-time routing). Off by default; the schema lives in `config/routing-schema.ts`. |
 | `src/mcp/` | `server.ts`, `data.ts`, `clients.ts`, `installer.ts` — the read-only MCP server and its installers. |
 | `src/setup/` | The guided setup wizard (`index.ts`, `prompts.ts`) and tool self-update (`updates.ts`, `update-runner.ts`). |
 | `src/pty/` | `factory.ts` (PTY process adapter + node-pty/pipe-fallback factories) and `helper.ts`. |
-| `src/session/` | `log.ts` and `outcome.ts` — persist validated session telemetry, collect the routed-task outcome. |
 | `src/ui/` | `terminal.ts` (boxes, status views, switch copy) and `restore.ts` (raw-mode/cursor recovery). |
-| `src/util/` | `paths.ts`, `redact.ts`, `git.ts`, `artifacts.ts`. |
+| `src/util/` | `paths.ts`, `redact.ts`, `git.ts`, `gitignore-marker.ts` (writes `.keepitmovin/.gitignore`), `session-log.ts` (persist/read validated session telemetry). |
 | `src/commands/` | One file per CLI command; `src/cli.ts` + `src/cli-options.ts` do the `commander` wiring. |
 | `src/doctor.ts` | `kim doctor` — provider health checks (pairs with `providers/health.ts`). |
-| `src/index.ts` | The public export surface (barrel) — keep exports intentional. |
 
 ## Beyond `src/`
 
@@ -82,8 +81,14 @@ entry points and the public barrel.
   flow out through `getDefaultInteractiveProviders` / `mergeCatalogInteractiveProviders`
   (`providers/catalog.ts`).
 - Files stay ≤250 LOC — split by extracting a focused module (see the harness/setup/updates/doctor
-  splits above) rather than letting one file grow.
-- Artifacts live under `.keepitmovin/` (handoffs, sessions).
+  splits above) rather than letting one file grow. **Pure data files are exempt**
+  (`providers/catalog-entries.ts`): splitting a list to satisfy a line count hides that its order
+  is behavior, and the split it used to have left a comment pointing at a file that did not exist.
+- Artifacts live under `.keepitmovin/` (handoffs, sessions). Their paths are constants in
+  `config/config-schema.ts`, not config — a user-settable handoff path aimed the destructive
+  `kim clear` at arbitrary files.
+- CLI commands are wrapped in `withConfig` (`cli-options.ts`), which resolves the cwd, loads the
+  config, and turns a throw into one red line plus a non-zero exit code.
 
 ## Gotchas
 

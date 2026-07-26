@@ -1,11 +1,11 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { ensureArtifactsIgnored } from "../util/artifacts.js";
+import { ensureArtifactsIgnored } from "../util/gitignore-marker.js";
 import { agentErrorTypeSchema, DEFAULT_KEEPITMOVIN_DIR, DEFAULT_SESSIONS_DIR } from "../config/index.js";
 import { redactSecrets } from "../util/redact.js";
 import { ARTIFACT_FILE_MODE, resolveFromCwd } from "../util/paths.js";
-import { reasoningEffortSchema, routingTierSchema } from "../routing/config.js";
+import { reasoningEffortSchema, routingTierSchema } from "../config/routing-schema.js";
 import type { HarnessSessionLog, KeepitmovinConfig } from "../config/types.js";
 
 const routeDecisionSchema = z.object({

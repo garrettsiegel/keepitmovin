@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config/index.js";
-import { readLatestSessionLog, resolveSessionsDir, writeSessionLog } from "../src/session/log.js";
+import { readLatestSessionLog, resolveSessionsDir, writeSessionLog } from "../src/util/session-log.js";
 import type { HarnessSessionLog } from "../src/config/types.js";
 import { makeTempDir } from "./support/tmp.js";
 

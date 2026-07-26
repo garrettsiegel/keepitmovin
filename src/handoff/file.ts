@@ -2,7 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { AgentErrorType, InteractiveProviderConfig, KeepitmovinConfig } from "../config/types.js";
 import { formatChangedFiles, formatGitSnapshot, getChangedFiles, getGitSnapshot } from "../util/git.js";
-import { getHandoffPaths } from "./artifacts.js";
+import { getHandoffPaths } from "./cleanup.js";
 import {
   appendSwitchHistoryLine,
   refreshHandoffFile,
@@ -10,13 +10,13 @@ import {
   SWITCH_HISTORY_LIMIT,
   TRANSCRIPT_EXCERPT_LIMIT
 } from "./refresh.js";
-import { ensureArtifactsIgnored } from "../util/artifacts.js";
+import { ensureArtifactsIgnored } from "../util/gitignore-marker.js";
 import { DEFAULT_KEEPITMOVIN_DIR } from "../config/index.js";
 import { redactSecrets } from "../util/redact.js";
 import { ARTIFACT_FILE_MODE, writeFileAtomic } from "../util/paths.js";
 
 export { buildProviderHandoffPrompt, buildSessionPrompt } from "./prompts.js";
-export { clearHandoffArtifacts, getHandoffPaths, type HandoffPaths } from "./artifacts.js";
+export { clearHandoffArtifacts, getHandoffPaths, type HandoffPaths } from "./cleanup.js";
 
 export interface HandoffCheckpoint {
   type: "session_start" | "tool_switch" | "session_end";

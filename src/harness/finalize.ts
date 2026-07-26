@@ -10,7 +10,7 @@ import type {
 import { getChangedFiles } from "../util/git.js";
 import { appendHandoffCheckpoint, archiveHandoffFile } from "../handoff/file.js";
 import { assessHandoffQuality } from "../handoff/quality.js";
-import { writeSessionLog } from "../session/log.js";
+import { writeSessionLog } from "../util/session-log.js";
 
 export interface FinalizeSessionOptions {
   cwd: string;

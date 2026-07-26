@@ -92,11 +92,7 @@ export const runLaunchCommand = async (options: CliOptions): Promise<void> => {
       task,
       routeDecision,
       routeOverrides: routeDecision
-        ? {
-            model: options.model,
-            effort: options.effort,
-            targetProvider: launchableProviders[0]?.name
-          }
+        ? { targetProvider: launchableProviders[0]?.name }
         : undefined
     });
 
