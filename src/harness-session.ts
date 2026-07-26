@@ -1,4 +1,3 @@
-import process from "node:process";
 import chalk from "chalk";
 import { createBootstrapWriter } from "./bootstrap-input.js";
 import type { AgentErrorType, AppliedRoute, HarnessAttemptLog, InteractiveProviderConfig, KeepitmovinConfig } from "./types.js";
@@ -12,9 +11,9 @@ import type { CompactionProbeOptions } from "./compaction-probe.js";
 import { createHarnessObservers } from "./harness-observers.js";
 import { startHarnessAttempt } from "./harness-attempt.js";
 import { describeSwitchReason } from "./terminal-ui.js";
-
-// Grace period between SIGTERM and SIGKILL for a child that ignores the former.
-const KILL_ESCALATION_MS = 5_000;
+import { attachSessionIo } from "./harness-io.js";
+import { buildAttemptLog } from "./harness-attempt-log.js";
+import { createEscalatingKill } from "./pty-factory.js";
 /** Run one provider in a PTY until exit, manual switch, idle timeout, or limit. */
 export const waitForProvider = async (
   provider: InteractiveProviderConfig,
@@ -121,96 +120,52 @@ export const waitForProvider = async (
     onCompaction: observers.observeCompaction
   });
 
-  // node-pty throws if the pty is already gone, and `output` may be an injected
-  // stream rather than process.stdout.
-  const onResize = (): void => {
-    try {
-      child.resize?.(output?.columns || process.stdout.columns || 80, output?.rows || process.stdout.rows || 24);
-    } catch {
-      // The child exited between the resize event and this call — nothing to do.
-    }
-  };
-
-  // A tool that traps SIGTERM to run its own shutdown prompt may never exit, which
-  // would leave the attempt promise pending forever and wedge keepitmovin. Escalate.
-  let killEscalation: NodeJS.Timeout | undefined;
-  const killChild = (): void => {
-    child.kill();
-    if (killEscalation) clearTimeout(killEscalation);
-    killEscalation = setTimeout(() => child.kill("SIGKILL"), KILL_ESCALATION_MS);
-    killEscalation.unref?.();
-  };
-
-  // Ctrl-C / SIGTERM. Registering a listener suppresses Node's default
-  // termination, so without recording the abort the child's kill read back as a
-  // clean exit and keepitmovin went on to write checkpoints and a "success"
-  // session log instead of stopping.
-  const onAbort = (): void => {
-    if (!settled) {
-      settled = true;
-      detectedError = "aborted";
-    }
-    cleanup();
-    killChild();
-  };
+  const { kill: killChild, cancel: cancelKillEscalation } = createEscalatingKill(child);
 
   let bootstrap: ReturnType<typeof createBootstrapWriter> | undefined;
-  // Keystrokes mirrored to the child before the (deferred) bootstrap paste lands
-  // are held here, then flushed once the paste is written — otherwise early user
-  // input interleaves with and corrupts the pasted prompt.
-  const pendingChildInput: string[] = [];
 
-  const flushPendingInput = (): void => {
-    if (pendingChildInput.length === 0) return;
-    child.write(pendingChildInput.splice(0).join(""));
-  };
+  const io = attachSessionIo({
+    input,
+    output,
+    manualSwitchSequence,
+    onActivity: () => {
+      lastActivityAt = Date.now();
+      observers.observeProgress();
+      armIdleTimer();
+    },
+    onManualSwitch: () => {
+      detectedError = "manual_switch";
+      settled = true;
+      output?.write(chalk.yellow("\n\nkeepitmovin manual switch requested. Pausing this tool...\n"));
+      killChild();
+    },
+    // Registering a SIGINT listener suppresses Node's default termination, so
+    // without recording the abort the child's kill read back as a clean exit and
+    // keepitmovin went on to write checkpoints and a "success" session log.
+    onAbort: () => {
+      if (!settled) {
+        settled = true;
+        detectedError = "aborted";
+      }
+      cleanup();
+      killChild();
+    },
+    writeToChild: (data) => child.write(data),
+    resizeChild: (cols, rows) => child.resize?.(cols, rows),
+    isBootstrapPending: () => Boolean(bootstrap && !bootstrap.isWritten())
+  });
 
   const cleanup = (): void => {
     if (cleaned) return;
     cleaned = true;
     if (idleTimer) clearTimeout(idleTimer);
-    if (killEscalation) clearTimeout(killEscalation);
+    cancelKillEscalation();
     bootstrap?.cancel();
     observers.stop();
     stopWatchers();
-    input?.off("data", onInput);
-    input?.setRawMode?.(false);
-    // stdin was resumed to mirror keystrokes; leaving it flowing and ref'd keeps
-    // the event loop alive, so `kim` would hang instead of exiting.
-    if (resumedInput) input?.pause();
-    output?.off?.("resize", onResize);
-    process.off("SIGINT", onAbort);
-    process.off("SIGTERM", onAbort);
+    io.detach();
   };
 
-  function onInput(chunk: Buffer): void {
-    lastActivityAt = Date.now();
-    observers.observeProgress();
-    armIdleTimer();
-
-    if (chunk.toString("utf8").includes(manualSwitchSequence)) {
-      detectedError = "manual_switch";
-      settled = true;
-      output?.write(chalk.yellow("\n\nkeepitmovin manual switch requested. Pausing this tool...\n"));
-      killChild();
-      return;
-    }
-
-    if (bootstrap && !bootstrap.isWritten()) {
-      pendingChildInput.push(chunk.toString());
-      return;
-    }
-
-    child.write(chunk.toString());
-  }
-
-  const resumedInput = input !== undefined && input.isPaused?.() !== false;
-  input?.setRawMode?.(true);
-  if (resumedInput) input?.resume();
-  input?.on("data", onInput);
-  output?.on?.("resize", onResize);
-  process.once("SIGINT", onAbort);
-  process.once("SIGTERM", onAbort);
   armIdleTimer();
 
   return new Promise((resolve) => {
@@ -219,7 +174,7 @@ export const waitForProvider = async (
       onWritten: () => {
         lastActivityAt = Date.now();
         armIdleTimer();
-        flushPendingInput();
+        io.flushPendingInput();
       }
     });
 
@@ -252,34 +207,33 @@ export const waitForProvider = async (
     child.onExit((event) => {
       cleanup();
       const transcriptExcerpt = transcript.excerpt();
+      // Deliberately scans the FULL transcript on a clean exit, not just the
+      // tail: tools commonly print the limit banner and then exit 0, and by then
+      // the banner can have scrolled well past the excerpt window.
       const errorType =
         detectedError ??
         (event.exitCode === 0
           ? detectLiveFailure(transcript.text(), provider, config, ignoreTexts)
-          : detectExitFailure(
-              transcript.text(),
-              provider,
-              config,
-              event.exitCode,
-              ignoreTexts
-            ));
+          : detectExitFailure(transcript.text(), provider, config, event.exitCode, ignoreTexts));
 
-      resolve({
-        provider: provider.name,
-        label: provider.label,
-        command: launch.command,
-        args: launch.args,
-        startedAt,
-        endedAt: new Date().toISOString(),
-        exitCode: event.exitCode,
-        errorType,
-        errorDetail,
-        transcriptExcerpt,
-        handoffReceipt: observers.receiptTracker.snapshot(),
-        ...(observers.compactionEvents.length > 0 ? { compactionEvents: observers.compactionEvents } : {}),
-        ...(observers.watchdogEvents.length > 0 ? { watchdogEvents: observers.watchdogEvents } : {}),
-        ...(route ? { route } : {})
-      });
+      resolve(
+        buildAttemptLog(
+          { provider, command: launch.command, args: launch.args, startedAt, route },
+          {
+            exitCode: event.exitCode,
+            errorType,
+            errorDetail,
+            transcriptExcerpt,
+            handoffReceipt: observers.receiptTracker.snapshot(),
+            ...(observers.compactionEvents.length > 0
+              ? { compactionEvents: observers.compactionEvents }
+              : {}),
+            ...(observers.watchdogEvents.length > 0
+              ? { watchdogEvents: observers.watchdogEvents }
+              : {})
+          }
+        )
+      );
     });
 
     bootstrap.arm();

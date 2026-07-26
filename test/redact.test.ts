@@ -53,7 +53,7 @@ describe("redactSecrets — additional token shapes", () => {
     ["openrouter key", `sk-or-v1-${"e".repeat(40)}`, "openrouter-key"],
     ["stripe live key", `sk_live_${"f".repeat(24)}`, "stripe-key"],
     ["sendgrid key", `SG.${"g".repeat(22)}.${"h".repeat(43)}`, "sendgrid-key"],
-    ["jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk"]
+    ["jwt", "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dBjftJeZ4CVPmB92K27uhbUJU1p1r_wW1gFWFOEjXk", "jwt"]
   ])("redacts a %s", (_name, secret) => {
     const output = redactSecrets(`the value is ${secret} ok`);
     expect(output).not.toContain(secret);

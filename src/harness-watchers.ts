@@ -2,6 +2,7 @@ import chalk from "chalk";
 import type { CompactionEventLog, HarnessAttemptLog, InteractiveProviderConfig, KeepitmovinConfig } from "./types.js";
 import { buildCompactionNudgeMessage, refreshHandoffFile, startHandoffWatcher } from "./handoff-refresh.js";
 import { startCompactionProbe, type CompactionProbeOptions } from "./compaction-probe.js";
+import { buildAttemptLog } from "./harness-attempt-log.js";
 import {
   checkUsageThreshold,
   formatUsageProbeMessage,
@@ -35,18 +36,15 @@ export const preLaunchUsageGate = async (args: {
 
   const detail = formatUsageProbeMessage(provider.label, snapshot, resolvedProbe.thresholdPercent);
   output?.write(chalk.yellow(`${detail} Skipping ${provider.label}.\n`));
-  return {
-    provider: provider.name,
-    label: provider.label,
-    command: args.command,
-    args: args.commandArgs,
-    startedAt: args.startedAt,
-    endedAt: new Date().toISOString(),
-    exitCode: null,
-    errorType: "rate_limit",
-    errorDetail: detail,
-    transcriptExcerpt: detail
-  };
+  return buildAttemptLog(
+    { provider, command: args.command, args: args.commandArgs, startedAt: args.startedAt },
+    {
+      exitCode: null,
+      errorType: "rate_limit",
+      errorDetail: detail,
+      transcriptExcerpt: detail
+    }
+  );
 };
 
 export interface SessionWatcherContext {

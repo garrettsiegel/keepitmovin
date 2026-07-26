@@ -75,3 +75,27 @@ export const ARTIFACT_FILE_MODE = 0o600;
 
 /** Mode for the directories those artifacts live in. */
 export const ARTIFACT_DIR_MODE = 0o700;
+
+/**
+ * Writes `content` to `file` atomically: to a sibling temp file first, then a
+ * rename over the target.
+ *
+ * A plain writeFile truncates before it writes, so anything reading the file
+ * concurrently — the next tool, `kim handoff`, the MCP server — can observe it
+ * empty or half-written. The handoff file is the artifact the whole handoff
+ * depends on, so a torn read there is the worst possible moment to lose it.
+ * Rename is atomic within a filesystem, so a reader sees either the old file or
+ * the new one, never a partial.
+ */
+export const writeFileAtomic = async (file: string, content: string): Promise<void> => {
+  const { rename, writeFile, unlink } = await import("node:fs/promises");
+  const temp = `${file}.kim-tmp-${process.pid}-${Date.now()}`;
+
+  try {
+    await writeFile(temp, content, { encoding: "utf8", mode: ARTIFACT_FILE_MODE });
+    await rename(temp, file);
+  } catch (error) {
+    await unlink(temp).catch(() => {});
+    throw error;
+  }
+};

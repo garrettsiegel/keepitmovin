@@ -5,14 +5,11 @@ import type {
   HarnessSessionLog,
   InteractiveProviderConfig,
   KeepitmovinConfig,
-  RouteDecision,
-  SessionOutcome
+  RouteDecision
 } from "./types.js";
 import { getChangedFiles } from "./git.js";
-import { readFile } from "node:fs/promises";
 import {
   appendHandoffCheckpoint,
-  archiveHandoffFile,
   buildProviderHandoffPrompt,
   buildSessionPrompt,
   createHandoffFile
@@ -20,7 +17,6 @@ import {
 import { getEnabledInteractiveProviders } from "./interactive-provider.js";
 import { waitForProvider } from "./harness-session.js";
 import { defaultPtyFactory, type PtyFactory } from "./pty-factory.js";
-import { writeSessionLog } from "./session-log.js";
 import { chooseSwitchProvider, type SwitchSelector } from "./switch-menu.js";
 import { renderCommercialBreak } from "./terminal-ui.js";
 import type { UsageProbeOptions } from "./usage-probe.js";
@@ -28,8 +24,8 @@ import type { CompactionProbeOptions } from "./compaction-probe.js";
 import { classifyTask } from "./routing.js";
 import { resolveProviderRoute } from "./model-routing.js";
 import type { RouteOverrides } from "./model-routing.js";
-import { assessHandoffQuality } from "./handoff-quality.js";
-import { chooseSessionOutcome, type OutcomeSelector } from "./session-outcome.js";
+import type { OutcomeSelector } from "./session-outcome.js";
+import { finalizeSession } from "./harness-finalize.js";
 export type { PtyFactory, PtyFactoryOptions, PtyProcess } from "./pty-factory.js";
 export interface HarnessOptions {
   cwd: string;
@@ -217,64 +213,24 @@ export const runHarness = async (
     options.output?.write(chalk.green(`Starting ${selected.provider.label} with your handoff file.\n`));
     index = selected.index;
   }
-
-  let outcome: SessionOutcome = "unknown";
-  if (
-    options.routeDecision &&
-    options.config.routing.telemetry &&
-    options.config.routing.askOutcome &&
-    options.input?.isTTY
-  ) {
-    outcome = await (options.outcomeSelector ?? chooseSessionOutcome)();
-  }
-
-  await appendHandoffCheckpoint(options.cwd, options.config, {
-    type: "session_end",
-    fromProvider: finalProvider,
-    transcriptExcerpt: meaningfulTranscriptExcerpt(
-      attempts.at(-1)?.transcriptExcerpt,
-      [sessionPrompt, handoffPrompt]
-    ),
-    note: [
-      aborted
-        ? "You stopped the session with Ctrl-C."
-        : success
-          ? "The final provider process exited cleanly."
-          : "The session ended without a clean provider exit.",
-      options.routeDecision && options.config.routing.telemetry
-        ? `Reported task outcome: ${outcome}.`
-        : undefined
-    ].filter(Boolean).join(" ")
-  });
-  const archivePath = await archiveHandoffFile(options.cwd, options.config, sessionId);
-  if (archivePath) {
-    options.output?.write(chalk.gray(`keepitmovin archived handoff: ${archivePath}\n`));
-  }
-
-  let handoffQuality;
-  try {
-    handoffQuality = assessHandoffQuality(await readFile(handoffPath, "utf8"));
-  } catch {
-    handoffQuality = undefined;
-  }
-  const log: HarnessSessionLog = {
+  return finalizeSession({
     cwd: options.cwd,
+    config: options.config,
+    input: options.input,
+    output: options.output,
+    task: options.task,
+    routeDecision: options.routeDecision,
+    outcomeSelector: options.outcomeSelector,
     startedAt,
-    endedAt: new Date().toISOString(),
-    providerOrder: providers.map((provider) => provider.name),
+    sessionId,
+    handoffPath,
+    sessionPrompt,
+    handoffPrompt,
+    providers,
     attempts,
     finalProvider,
     success,
-    ...(aborted ? { aborted } : {}),
-    changedFiles: await getChangedFiles(options.cwd),
-    ...(options.task ? { task: options.task } : {}),
-    ...(options.routeDecision && options.config.routing.telemetry
-      ? { routeDecision: options.routeDecision, outcome }
-      : {}),
-    ...(handoffQuality ? { handoffQuality } : {})
-  };
-  const sessionLogPath = await writeSessionLog(options.cwd, options.config, log);
-  options.output?.write(chalk.gray(`\nkeepitmovin session log: ${sessionLogPath}\n`));
-
-  return { ...log, sessionLogPath };
+    aborted,
+    meaningfulTranscriptExcerpt
+  });
 };

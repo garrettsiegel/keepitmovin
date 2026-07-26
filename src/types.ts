@@ -1,5 +1,10 @@
 import type { z } from "zod";
-import type { keepitmovinConfigSchema } from "./config.js";
+import type {
+  compactionProbeSpecSchema,
+  interactiveProviderConfigSchema,
+  keepitmovinConfigSchema,
+  usageProbeSpecSchema
+} from "./config.js";
 
 export type ProviderName = string;
 
@@ -72,37 +77,13 @@ export type AgentErrorType =
 export type UsageProbeKind = "codex-session-files";
 export type CompactionProbeKind = "claude-transcript" | "codex-session-files";
 
-export interface UsageProbeSpec {
-  kind: UsageProbeKind;
-  // Overrides harness.usageProbe.thresholdPercent for this provider only.
-  thresholdPercent?: number;
-}
-
-export interface CompactionProbeSpec {
-  kind: CompactionProbeKind;
-}
-
-export interface InteractiveProviderConfig {
-  name: ProviderName;
-  label: string;
-  enabled: boolean;
-  command: string;
-  args: string[];
-  handoffArgs: string[];
-  integrationType: ProviderIntegrationType;
-  bootstrapInput?: string;
-  handoffBootstrapInput?: string;
-  controllable?: boolean;
-  fallbackOn?: AgentErrorType[];
-  // Exact, tool-emitted rate/usage-limit banners for this provider. Matched during
-  // live detection when they head a status-like line (see
-  // failure-detection.ts:detectLiveFailure).
-  limitPatterns?: string[];
-  // Optional local-file usage probe (see usage-probe.ts). Absent for tools with
-  // no readable headroom state (e.g. Claude Code today).
-  usageProbe?: UsageProbeSpec;
-  compactionProbe?: CompactionProbeSpec;
-}
+// Derived from the zod schemas rather than restated. These interfaces used to be
+// written out by hand alongside the schema in config.ts; nothing kept the two in
+// sync, so a new schema field silently failed to reach consumers typed against
+// the interface. The schema is the contract — infer from it.
+export type UsageProbeSpec = z.infer<typeof usageProbeSpecSchema>;
+export type CompactionProbeSpec = z.infer<typeof compactionProbeSpecSchema>;
+export type InteractiveProviderConfig = z.infer<typeof interactiveProviderConfigSchema>;
 
 export type KeepitmovinConfig = z.infer<typeof keepitmovinConfigSchema>;
 

@@ -43,3 +43,6 @@ DESIGN.md
 
 # Scraped third-party reference captures (design-tool byproducts, not sources)
 .firecrawl/
+
+# Coverage output
+coverage/

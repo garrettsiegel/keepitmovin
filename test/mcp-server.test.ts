@@ -1,5 +1,4 @@
 import { mkdir, symlink, writeFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -8,9 +7,10 @@ import { defaultConfig } from "../src/config.js";
 import { readMcpHandoff } from "../src/mcp-data.js";
 import { createKeepitmovinMcpServer } from "../src/mcp-server.js";
 import { writeSessionLog } from "../src/session-log.js";
+import { makeTempDir } from "./support/tmp.js";
 
 const project = async (): Promise<string> => {
-  const cwd = path.join(os.tmpdir(), `kim-mcp-server-${Date.now()}-${Math.random()}`);
+  const cwd = await makeTempDir("kim-mcp-server");
   await mkdir(path.join(cwd, ".keepitmovin", "current"), { recursive: true });
   await writeFile(
     path.join(cwd, ".keepitmovin", "current", "handoff.md"),
@@ -71,8 +71,8 @@ describe("MCP path containment", () => {
   it("refuses a handoff path that escapes the project root via a symlink", async () => {
     // A lexical resolve alone reports this as inside the root, so without
     // realpath resolution the target file would be streamed to any MCP client.
-    const root = path.join(os.tmpdir(), `kim-mcp-symlink-${Date.now()}-${Math.random()}`);
-    const outside = path.join(os.tmpdir(), `kim-mcp-outside-${Date.now()}-${Math.random()}`);
+    const root = await makeTempDir("kim-mcp-symlink");
+    const outside = await makeTempDir("kim-mcp-outside");
     await mkdir(path.join(root, ".keepitmovin"), { recursive: true });
     await mkdir(outside, { recursive: true });
     await writeFile(path.join(outside, "handoff.md"), "SECRET", "utf8");
@@ -88,7 +88,7 @@ describe("MCP path containment", () => {
   });
 
   it("still allows a real path inside the project root", async () => {
-    const root = path.join(os.tmpdir(), `kim-mcp-ok-${Date.now()}-${Math.random()}`);
+    const root = await makeTempDir("kim-mcp-ok");
     await mkdir(path.join(root, ".keepitmovin", "current"), { recursive: true });
     await writeFile(path.join(root, ".keepitmovin", "current", "handoff.md"), "# Handoff", "utf8");
 

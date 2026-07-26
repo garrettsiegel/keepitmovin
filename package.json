@@ -65,11 +65,12 @@
     "build": "tsc && node -e \"require('node:fs').chmodSync('dist/cli.js', 0o755)\"",
     "clean": "rm -rf dist",
     "dev": "tsx src/cli.ts",
-    "lint": "tsc --noEmit",
+    "lint": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
     "prepublishOnly": "pnpm build",
     "release": "bash scripts/release.sh",
     "start": "node dist/cli.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@clack/prompts": "^1.6.0",
@@ -84,6 +85,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
+    "@vitest/coverage-v8": "^4.1.10",
     "tsx": "^4.21.0",
     "typescript": "~6.0.2",
     "vitest": "^4.0.15"

@@ -1,6 +1,3 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.js";
 import {
@@ -12,44 +9,11 @@ import {
   type UsageSnapshot
 } from "../src/usage-probe.js";
 import type { InteractiveProviderConfig } from "../src/types.js";
+import { makeTempDir } from "./support/tmp.js";
+import { rateLimitLine, writeRollout } from "./support/codex-rollout.js";
 
-const makeBaseDir = async (): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-probe-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
-  return dir;
-};
+const makeBaseDir = async (): Promise<string> => makeTempDir("kim-probe");
 
-const dayDir = (baseDir: string, date: Date): string =>
-  path.join(
-    baseDir,
-    "sessions",
-    String(date.getFullYear()),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0")
-  );
-
-const writeRollout = async (
-  baseDir: string,
-  date: Date,
-  fileName: string,
-  lines: string[]
-): Promise<void> => {
-  await mkdir(dayDir(baseDir, date), { recursive: true });
-  await writeFile(path.join(dayDir(baseDir, date), fileName), `${lines.join("\n")}\n`, "utf8");
-};
-
-const rateLimitLine = (primary: number, secondary: number): string =>
-  JSON.stringify({
-    timestamp: "2025-09-27T07:27:21.415Z",
-    type: "event_msg",
-    payload: {
-      type: "token_count",
-      rate_limits: {
-        primary: { used_percent: primary, window_minutes: 299, resets_in_seconds: 17_940 },
-        secondary: { used_percent: secondary, window_minutes: 10_079, resets_in_seconds: 351_406 }
-      }
-    }
-  });
 
 const daysAgo = (base: Date, count: number): Date => new Date(base.getTime() - count * 86_400_000);
 

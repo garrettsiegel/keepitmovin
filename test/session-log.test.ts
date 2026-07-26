@@ -1,16 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.js";
 import { readLatestSessionLog, resolveSessionsDir, writeSessionLog } from "../src/session-log.js";
 import type { HarnessSessionLog } from "../src/types.js";
+import { makeTempDir } from "./support/tmp.js";
 
-const makeTempDir = async (): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-session-log-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
-  return dir;
-};
 
 const sampleLog = (): HarnessSessionLog => ({
   cwd: "/tmp/project",

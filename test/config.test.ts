@@ -1,14 +1,10 @@
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { keepitmovinConfigSchema, defaultConfig, initConfig, loadConfig } from "../src/config.js";
+import { makeTempDir } from "./support/tmp.js";
 
-const makeRealTempDir = async (): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-config-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
-  return dir;
-};
+const makeRealTempDir = async (): Promise<string> => makeTempDir("kim-config");
 
 describe("config", () => {
   it("returns defaults when no config file exists", async () => {

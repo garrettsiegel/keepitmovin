@@ -41,8 +41,12 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Lint
+      - name: Lint (typechecks src and test)
         run: pnpm lint
+
+      - name: Coverage
+        if: matrix.node == 22
+        run: pnpm test:coverage
 
   site:
     name: Build site

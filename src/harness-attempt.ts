@@ -6,6 +6,7 @@ import type { PtyFactory, PtyProcess } from "./pty-factory.js";
 import type { AppliedRoute, HarnessAttemptLog, InteractiveProviderConfig } from "./types.js";
 import { preLaunchUsageGate } from "./harness-watchers.js";
 import type { ResolvedUsageProbe, UsageProbeOptions } from "./usage-probe.js";
+import { buildAttemptLog } from "./harness-attempt-log.js";
 
 type StartOptions = {
   provider: InteractiveProviderConfig;
@@ -57,18 +58,14 @@ export const startHarnessAttempt = async (
       const message = error instanceof Error ? error.message : String(error);
       output?.write(chalk.yellow(`keepitmovin could not start ${provider.label}: ${message}\n`));
       const missing = /not found|enoent/i.test(message);
-      return { attempt: {
-        provider: provider.name,
-        label: provider.label,
-        command: launch.command,
-        args: launch.args,
-        startedAt,
-        endedAt: new Date().toISOString(),
-        exitCode: 127,
-        errorType: missing ? "command_not_found" : "unknown",
-        transcriptExcerpt: message,
-        ...(options.route ? { route: options.route } : {})
-      } };
+      return { attempt: buildAttemptLog(
+        { provider, command: launch.command, args: launch.args, startedAt, route: options.route },
+        {
+          exitCode: 127,
+          errorType: missing ? "command_not_found" : "unknown",
+          transcriptExcerpt: message
+        }
+      ) };
     }
   } };
 };

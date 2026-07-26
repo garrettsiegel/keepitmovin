@@ -1,16 +1,11 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.js";
 import { runDoctor } from "../src/doctor.js";
 import { trustConfigFile } from "../src/trust.js";
+import { makeTempDir } from "./support/tmp.js";
 
-const makeTempDir = async (): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-doctor-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
-  return dir;
-};
 
 describe("runDoctor", () => {
   it("reports provider availability and default paths", async () => {

@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.js";
@@ -9,12 +8,12 @@ import {
   resolveProviderRoute
 } from "../src/model-routing.js";
 import { classifyTask } from "../src/routing.js";
+import { makeTempDir } from "./support/tmp.js";
 
 const makeCodexHome = async (
   models: Array<{ slug: string; efforts: string[] }>
 ): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-models-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
+  const dir = await makeTempDir("kim-models");
   await writeFile(path.join(dir, "models_cache.json"), JSON.stringify({
     models: models.map((model) => ({
       slug: model.slug,

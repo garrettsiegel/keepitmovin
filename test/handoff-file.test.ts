@@ -1,8 +1,8 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.js";
+import { makeTempDir } from "./support/tmp.js";
 import {
   appendHandoffCheckpoint,
   archiveHandoffFile,
@@ -14,11 +14,6 @@ import {
   summarizeHandoffFile
 } from "../src/handoff-file.js";
 
-const makeTempDir = async (): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-handoff-file-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
-  return dir;
-};
 
 describe("handoff file helpers", () => {
   it("creates, appends, summarizes, archives, and clears handoff files", async () => {

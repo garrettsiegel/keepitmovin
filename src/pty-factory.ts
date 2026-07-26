@@ -139,3 +139,35 @@ export const defaultPtyFactory: PtyFactory = (command, args, options) => {
     return pipeFallbackPtyFactory(command, args, options);
   }
 };
+
+/** Grace period between SIGTERM and SIGKILL for a child that ignores the former. */
+const KILL_ESCALATION_MS = 5_000;
+
+/**
+ * Returns a kill function that escalates to SIGKILL if the child ignores the
+ * default SIGTERM. TUI agents commonly trap SIGTERM to run their own shutdown
+ * prompt; if such a child never exits, the attempt promise never settles and
+ * keepitmovin wedges. Call `cancel` during cleanup to clear the pending timer.
+ */
+export const createEscalatingKill = (
+  child: PtyProcess
+): { kill: () => void; cancel: () => void } => {
+  let escalation: NodeJS.Timeout | undefined;
+
+  const cancel = (): void => {
+    if (escalation) {
+      clearTimeout(escalation);
+      escalation = undefined;
+    }
+  };
+
+  return {
+    kill: () => {
+      child.kill();
+      cancel();
+      escalation = setTimeout(() => child.kill("SIGKILL"), KILL_ESCALATION_MS);
+      escalation.unref?.();
+    },
+    cancel
+  };
+};

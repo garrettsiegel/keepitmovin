@@ -1,14 +1,10 @@
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { appendFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { startCompactionProbe } from "../src/compaction-probe.js";
+import { makeTempDir } from "./support/tmp.js";
 
-const tempDir = async (): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-compaction-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
-  return dir;
-};
+const tempDir = async (): Promise<string> => makeTempDir("kim-compaction");
 
 const waitFor = async (predicate: () => boolean): Promise<void> => {
   for (let index = 0; index < 40; index += 1) {

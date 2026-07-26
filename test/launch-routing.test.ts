@@ -1,15 +1,8 @@
-import { mkdir } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.js";
 import { isRoutingRequested, resolveRouteForLaunch } from "../src/launch-routing.js";
+import { makeTempDir } from "./support/tmp.js";
 
-const makeTempDir = async (): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-launch-routing-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
-  return dir;
-};
 
 describe("launch routing", () => {
   it("keeps automatic routing opt-in but honors explicit one-run overrides", () => {

@@ -1,8 +1,8 @@
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { formatChangedFiles, formatGitSnapshot, getChangedFiles, getGitSnapshot } from "./git.js";
 import { redactSecrets } from "./redact.js";
 import type { KeepitmovinConfig } from "./types.js";
-import { ARTIFACT_FILE_MODE } from "./paths.js";
+import { writeFileAtomic } from "./paths.js";
 
 export const SWITCH_HISTORY_LIMIT = 10;
 export const TRANSCRIPT_EXCERPT_LIMIT = 1_500;
@@ -117,7 +117,7 @@ export const refreshHandoffFile = async (
     );
     content = trimSwitchHistory(content, SWITCH_HISTORY_LIMIT);
 
-    await writeFile(handoffPath, content, { encoding: "utf8", mode: ARTIFACT_FILE_MODE });
+    await writeFileAtomic(handoffPath, content);
     return true;
   } catch {
     return false;

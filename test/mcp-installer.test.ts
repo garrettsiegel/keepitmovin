@@ -1,12 +1,12 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { getMcpClientStatuses, type McpCommandRunner } from "../src/mcp-clients.js";
 import { changeMcpInstallations } from "../src/mcp-installer.js";
+import { makeTempDir } from "./support/tmp.js";
 
 const tempHome = async (): Promise<string> => {
-  const home = path.join(os.tmpdir(), `kim-mcp-home-${Date.now()}-${Math.random()}`);
+  const home = await makeTempDir("kim-mcp-home");
   await mkdir(path.join(home, ".cursor"), { recursive: true });
   return home;
 };

@@ -1,5 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import os from "node:os";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.js";
@@ -9,12 +8,8 @@ import {
   UntrustedConfigError
 } from "../src/trust.js";
 import type { KeepitmovinConfig, InteractiveProviderConfig } from "../src/types.js";
+import { makeTempDir } from "./support/tmp.js";
 
-const makeTempDir = async (prefix: string): Promise<string> => {
-  const dir = path.join(os.tmpdir(), `kim-${prefix}-${Date.now()}-${Math.random()}`);
-  await mkdir(dir, { recursive: true });
-  return dir;
-};
 
 const customProvider: InteractiveProviderConfig = {
   name: "totally-custom",

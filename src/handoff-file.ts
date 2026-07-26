@@ -13,7 +13,7 @@ import {
 import { ensureArtifactsIgnored } from "./artifacts.js";
 import { DEFAULT_KEEPITMOVIN_DIR } from "./config.js";
 import { redactSecrets } from "./redact.js";
-import { ARTIFACT_FILE_MODE } from "./paths.js";
+import { ARTIFACT_FILE_MODE, writeFileAtomic } from "./paths.js";
 
 export { buildProviderHandoffPrompt, buildSessionPrompt } from "./handoff-prompts.js";
 export { clearHandoffArtifacts, getHandoffPaths, type HandoffPaths } from "./handoff-artifacts.js";
@@ -106,7 +106,7 @@ export const createHandoffFile = async (
     "- None yet.",
     ""
   ].join("\n");
-  await writeFile(paths.livePath, content, { encoding: "utf8", mode: ARTIFACT_FILE_MODE });
+  await writeFileAtomic(paths.livePath, content);
   return paths.livePath;
 };
 
@@ -145,7 +145,7 @@ export const appendHandoffCheckpoint = async (
     );
   }
 
-  await writeFile(paths.livePath, content, { encoding: "utf8", mode: ARTIFACT_FILE_MODE });
+  await writeFileAtomic(paths.livePath, content);
   await refreshHandoffFile(cwd, config, paths.livePath);
 };
 

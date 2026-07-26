@@ -81,6 +81,14 @@ export {
   PROVIDER_CATALOG,
   reconcileProviderOrder
 } from "./provider-catalog.js";
+// Previously absent from the barrel even though they are the pieces a consumer
+// most plausibly needs: the live detector, the redactor applied to every
+// persisted artifact, the recursive-delete guard, and config save/trust.
+export { detectLiveFailure, detectExitFailure } from "./failure-detection.js";
+export { redactSecrets } from "./redact.js";
+export { isSafeToRecursivelyDelete, isStrictlyInside, resolveFromCwd } from "./paths.js";
+export { assessHandoffQuality } from "./handoff-quality.js";
+
 export type {
   AgentErrorType,
   AppliedRoute,
