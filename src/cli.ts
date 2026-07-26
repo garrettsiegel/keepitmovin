@@ -6,11 +6,9 @@ import { Command, InvalidArgumentError } from "commander";
 import { runClearCommand } from "./commands/clear.js";
 import { runDoctorCommand } from "./commands/doctor.js";
 import { runHandoffCommand } from "./commands/handoff.js";
-import { runInitCommand } from "./commands/init.js";
 import { runLaunchCommand } from "./commands/launch.js";
 import { runProvidersCommand } from "./commands/providers.js";
 import { runSessionCommand } from "./commands/session.js";
-import { runSetupCommand } from "./commands/setup.js";
 import { runMcpChangeCommand, runMcpServeCommand, runMcpStatusCommand } from "./commands/mcp.js";
 import {
   resolveCommandOptions,
@@ -46,6 +44,22 @@ const explicitTask = splitExplicitTaskArgv(process.argv);
 
 const program = new Command();
 
+// Every command accepts the same two location flags. Declaring them through one
+// helper keeps them in a single place while still letting commander parse them
+// on either side of the subcommand name (`kim -c a.json doctor` and
+// `kim doctor -c a.json` both work; resolveCommandOptions merges the two).
+const declareCommand = (name: string, description: string, hidden = false): Command =>
+  program
+    .command(name, { hidden })
+    .description(description)
+    .option("-c, --config <path>", "Config file path")
+    .option("--cwd <path>", "Working directory", process.cwd());
+
+const withOptions =
+  <T extends CliOptions>(handler: (options: T) => Promise<void>) =>
+    async (rawOptions: T | Command, command?: Command): Promise<void> =>
+      handler(resolveCommandOptions(rawOptions, command) as T);
+
 program
   .name("kim")
   .description("Run your AI coding tools in one terminal, with automatic handoff when one hits a limit. Works with Claude Code, Codex, Kimi CLI, Google Antigravity, opencode, Grok Build, Cursor Agent, GitHub Copilot CLI, and Ollama.")
@@ -65,73 +79,31 @@ program
     await runLaunchCommand({ ...options, task: taskText });
   });
 
-program
-  .command("init")
-  .description("Create the keepitmovin config file and local folders.")
-  .option("-c, --config <path>", "Config file path")
-  .option("--cwd <path>", "Working directory", process.cwd())
-  .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    await runInitCommand(resolveCommandOptions(rawOptions, command));
-  });
-
-program
-  .command("doctor")
-  .description("Check your config, tools, git status, and file locations.")
-  .option("-c, --config <path>", "Config file path")
-  .option("--cwd <path>", "Working directory", process.cwd())
-  .option("--all", "Include tools that aren't verified yet")
-  .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    await runDoctorCommand(resolveCommandOptions(rawOptions, command));
-  });
-
-program
-  .command("handoff")
-  .description("Show the current handoff file's path and a preview.")
-  .option("-c, --config <path>", "Config file path")
-  .option("--cwd <path>", "Working directory", process.cwd())
-  .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    await runHandoffCommand(resolveCommandOptions(rawOptions, command));
-  });
-
-program
-  .command("clear")
-  .description("Delete local handoff and session files.")
-  .option("-c, --config <path>", "Config file path")
-  .option("--cwd <path>", "Working directory", process.cwd())
-  .option("--yes", "Skip confirmation")
-  .action(async (rawOptions: (CliOptions & { yes?: boolean }) | Command, command?: Command) => {
-    const options = resolveCommandOptions(rawOptions, command) as CliOptions & { yes?: boolean };
-    await runClearCommand(options);
-  });
-
-program
-  .command("setup")
-  .description("Run the guided setup: pick your tools and their order.")
-  .option("-c, --config <path>", "Config file path")
-  .option("--cwd <path>", "Working directory", process.cwd())
-  .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    await runSetupCommand(resolveCommandOptions(rawOptions, command));
-  });
-
-program
-  .command("providers")
-  .description("Change which tools you use and their fallback order.")
-  .option("-c, --config <path>", "Config file path")
-  .option("--cwd <path>", "Working directory", process.cwd())
+declareCommand("providers", "Change which tools you use and their fallback order.")
   .option("--all", "Browse every tool, including ones that aren't verified yet")
   .option("--reset", "Start over from the built-in defaults instead of your saved settings")
-  .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    await runProvidersCommand(resolveCommandOptions(rawOptions, command));
-  });
+  .action(withOptions(runProvidersCommand));
 
-program
-  .command("session")
-  .description("Show a summary of your most recent session.")
-  .option("-c, --config <path>", "Config file path")
-  .option("--cwd <path>", "Working directory", process.cwd())
-  .action(async (rawOptions: CliOptions | Command, command?: Command) => {
-    await runSessionCommand(resolveCommandOptions(rawOptions, command));
-  });
+// `setup` is what `providers` used to be called; kept as a hidden alias so the
+// old muscle memory (and any script) keeps working.
+declareCommand("setup", "Alias for `kim providers`.", true)
+  .option("--all", "Browse every tool, including ones that aren't verified yet")
+  .option("--reset", "Start over from the built-in defaults instead of your saved settings")
+  .action(withOptions(runProvidersCommand));
+
+declareCommand("doctor", "Check your config, tools, git status, and file locations.")
+  .option("--all", "Include tools that aren't verified yet")
+  .action(withOptions(runDoctorCommand));
+
+declareCommand("handoff", "Show the current handoff file's path and a preview.")
+  .action(withOptions(runHandoffCommand));
+
+declareCommand("clear", "Delete local handoff and session files.")
+  .option("--yes", "Skip confirmation")
+  .action(withOptions(runClearCommand));
+
+declareCommand("session", "Show a summary of your most recent session.")
+  .action(withOptions(runSessionCommand));
 
 const mcp = program
   .command("mcp")

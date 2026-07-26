@@ -7,12 +7,9 @@ export interface CliOptions {
   all?: boolean;
   config?: string;
   cwd?: string;
-  dryRun?: boolean;
-  maxRetries?: string;
-  printPrompt?: boolean;
-  provider?: string;
   reset?: boolean;
   task?: string;
+  yes?: boolean;
   tier?: RoutingTier;
   model?: string;
   effort?: ReasoningEffort;

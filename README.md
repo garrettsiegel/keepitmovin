@@ -241,9 +241,7 @@ locked in with tests. They're verified against reported messages, not against li
 | Command | What it does |
 |---|---|
 | `kim` | Start (or resume) your session. |
-| `kim init` | Create the config file and `.keepitmovin/` folders without running the wizard. |
-| `kim setup` | Re-run the guided setup. |
-| `kim providers` | Change which tools you use and their fallback order (add `--all` to browse every tool). |
+| `kim providers` | Change which tools you use and their fallback order (add `--all` to browse every tool, `--reset` to start over from the defaults). |
 | `kim doctor` | Check your config, tools, and git status (add `--all` to include tools that aren't verified yet). |
 | `kim handoff` | Show the current handoff file's path and a preview. |
 | `kim session` | Show a summary of your most recent session. |

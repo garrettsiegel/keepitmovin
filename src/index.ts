@@ -1,4 +1,4 @@
-export { defaultConfig, initConfig, loadConfig, keepitmovinConfigSchema } from "./config/index.js";
+export { defaultConfig, loadConfig, saveConfig, keepitmovinConfigSchema } from "./config/index.js";
 export { runDoctor } from "./doctor.js";
 export { classifyError } from "./detection/errors.js";
 export {

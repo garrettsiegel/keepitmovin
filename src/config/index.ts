@@ -97,33 +97,6 @@ export const loadConfig = async (
   return { config: normalizeConfig(result.data), path: resolvedPath };
 };
 
-export const initConfig = async (
-  cwd: string,
-  configPath?: string
-): Promise<{ configPath: string; createdConfig: boolean }> => {
-  const resolvedPath = resolveConfigPath(cwd, configPath);
-  let createdConfig = false;
-
-  await mkdir(path.join(cwd, DEFAULT_KEEPITMOVIN_DIR), { recursive: true });
-  await mkdir(path.join(cwd, DEFAULT_SESSIONS_DIR), { recursive: true });
-  await mkdir(path.dirname(path.join(cwd, DEFAULT_HANDOFF_PATH)), { recursive: true });
-  await mkdir(path.join(cwd, DEFAULT_HANDOFF_ARCHIVE_DIR), { recursive: true });
-  await ensureKeepitmovinIgnored(cwd);
-
-  try {
-    await access(resolvedPath);
-  } catch {
-    await writeFile(
-      resolvedPath,
-      `${JSON.stringify(defaultConfig(), null, 2)}\n`,
-      "utf8"
-    );
-    createdConfig = true;
-  }
-
-  return { configPath: resolvedPath, createdConfig };
-};
-
 export const saveConfig = async (
   cwd: string,
   config: KeepitmovinConfig,

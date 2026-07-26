@@ -1,7 +1,7 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { keepitmovinConfigSchema, defaultConfig, initConfig, loadConfig } from "../src/config/index.js";
+import { keepitmovinConfigSchema, defaultConfig, loadConfig, saveConfig } from "../src/config/index.js";
 import { makeTempDir } from "./support/tmp.js";
 
 const makeRealTempDir = async (): Promise<string> => makeTempDir("kim-config");
@@ -149,13 +149,12 @@ describe("config", () => {
     await expect(loadConfig(cwd)).rejects.toThrow();
   });
 
-  it("initializes config and kim directories", async () => {
+  it("creates the config and kim directories when saving", async () => {
     const cwd = await makeRealTempDir();
 
-    const result = await initConfig(cwd);
+    const configPath = await saveConfig(cwd, defaultConfig());
 
-    expect(result.createdConfig).toBe(true);
-    expect(JSON.parse(await readFile(result.configPath, "utf8"))).toMatchObject({
+    expect(JSON.parse(await readFile(configPath, "utf8"))).toMatchObject({
       harness: { providers: expect.any(Array) }
     });
     await expect(stat(path.join(cwd, ".keepitmovin", "sessions"))).resolves.toMatchObject({
@@ -229,15 +228,15 @@ describe("config", () => {
     ).toThrow();
   });
 
-  it("writes a .keepitmovin/.gitignore marker on init and is idempotent", async () => {
+  it("writes a .keepitmovin/.gitignore marker on save and is idempotent", async () => {
     const cwd = await makeRealTempDir();
     const markerPath = path.join(cwd, ".keepitmovin", ".gitignore");
 
-    await initConfig(cwd);
+    await saveConfig(cwd, defaultConfig());
     expect(await readFile(markerPath, "utf8")).toBe("*\n");
 
     // Re-running must not duplicate or change the marker.
-    await initConfig(cwd);
+    await saveConfig(cwd, defaultConfig());
     expect(await readFile(markerPath, "utf8")).toBe("*\n");
   });
 });
