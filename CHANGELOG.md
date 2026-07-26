@@ -14,6 +14,51 @@ All notable changes to keepitmovin are documented here. The format is based on
   reread prompt instead of an automatic switch.
 - Warning-only loop, abnormal Codex burn, and streaming-stall watchdog signals recorded locally.
 - A read-only local MCP server plus reversible user-wide installers for MCP-capable coding tools.
+- `redactSecrets` now covers JWTs, inline URL credentials, and npm/HuggingFace/Groq/xAI/OpenRouter/
+  Stripe/SendGrid tokens, plus a name-based catch-all for secret-shaped assignments.
+- Public exports for `detectLiveFailure`, `redactSecrets`, `isSafeToRecursivelyDelete` and
+  `assessHandoffQuality`.
+
+### Fixed
+
+- **Ordinary agent prose no longer forces a handoff.** Status words were matched as bare
+  substrings, so a line like *"if we hit the rate limit we should back off"* — or any line
+  containing *"whitespace"* alongside a limit phrase — read as a real limit banner. Status words
+  must now sit directly beside the matched pattern.
+- **Real limit banners are no longer swallowed.** Claude Code renders *"Context left until
+  auto-compact: 23%"* directly above its status output, and the percentage-warning guard used that
+  previous line to veto the next one — hiding a genuine *"usage limit reached"* banner. A line
+  carrying its own exhaustion word is now always judged on its own merits, and a banner that quotes
+  its own percentage is no longer dismissed as a warning.
+- Injected prompts are normalized to LF before being stripped from the transcript. PTY output is
+  CRLF, so they were never actually removed — and because the handoff prompt embeds the error type
+  verbatim, a tool echoing its own launch arguments could trigger an immediate re-switch.
+- **Ctrl-C now ends the session and exits non-zero.** It was recorded as a clean exit, so
+  keepitmovin went on to write checkpoints, archive the handoff, and log a successful session.
+- Switches are capped at twice the provider count. With two tools configured, the switch menu
+  auto-picks the only alternative, so a persistent failure ping-ponged between them forever.
+- A tool that ignores `SIGTERM` is escalated to `SIGKILL` after 5s instead of wedging the session.
+- The handoff file is written atomically. A concurrent reader — the next tool, `kim handoff`, or
+  the MCP server — could previously observe it empty or half-written.
+- stdin is paused during cleanup, so `kim` exits instead of hanging; a crash-path hook restores raw
+  mode and the cursor.
+- The pipe fallback waits for output to drain before reporting exit (the limit banner was often in
+  the final chunk), reports the real signal instead of inventing exit code 1, and survives EPIPE.
+- `getChangedFiles` parses renames and paths containing spaces correctly.
+- Invalid config JSON reports the file path and parse detail instead of a bare `SyntaxError`.
+
+### Security
+
+- MCP path containment resolves symlinks, so a handoff path pointing outside the project root
+  through a symlinked directory is rejected rather than streamed to connected clients.
+- Handoff files, session logs and the trust store are written `0600` in `0700` directories.
+
+### Changed
+
+- Releases publish from CI on a tag push using npm trusted publishing (OIDC), with provenance and
+  no stored npm token. `pnpm release` now tags and pushes; it no longer publishes directly.
+- `exports` lists `types` before `import`, as condition order requires.
+- The published package includes `CHANGELOG.md` and `src/` (so declaration maps resolve).
 
 ## [2.0.1] — 2026-07-18
 

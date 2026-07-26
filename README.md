@@ -341,7 +341,8 @@ Before committing, make sure `pnpm build`, `pnpm test`, and `pnpm lint` all pass
 `pnpm release <patch|minor|major|<semver>>` runs build/test/lint, bumps the version, commits and
 tags it, and pushes `main` + tags to origin. Pushing the tag triggers the release workflow, which
 rebuilds from a clean checkout and publishes to npm with provenance — nothing is published from a
-laptop. The script refuses to run from a branch other than `main`, with a dirty working tree, or
+laptop. CI authenticates with npm trusted publishing (OIDC), so there is no npm token stored in
+this repo. The script refuses to run from a branch other than `main`, with a dirty working tree, or
 out of sync with `origin/main`, and prompts for confirmation before it pushes (pass `--yes` to
 skip the prompt). Preview what would happen, including the packed npm contents, without any git or
 npm mutation:

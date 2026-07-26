@@ -1,8 +1,19 @@
 name: release
 
 # Publishing previously ran from a laptop with a long-lived npm session, which
-# left no provenance and made the release reproducible on exactly one machine.
-# A tag push now builds, verifies and publishes from CI with OIDC provenance.
+# left no provenance and made a release reproducible on exactly one machine.
+# Pushing a tag now builds, verifies and publishes from a clean checkout.
+#
+# Authentication uses npm **trusted publishing**: npm is configured to trust this
+# specific repository + workflow, and GitHub mints a short-lived OIDC token for
+# each run. There is no npm token stored anywhere in this repo, so there is
+# nothing to leak, rotate, or accidentally grant to a fork.
+#
+# One-time setup on npmjs.com (Package → Settings → Trusted Publisher):
+#   Organization or user: garrettsiegel
+#   Repository:           keepitmovin
+#   Workflow filename:    release.yml
+#   Environment:          (leave blank)
 on:
   push:
     tags:
@@ -15,10 +26,10 @@ jobs:
   publish:
     name: Publish to npm
     runs-on: ubuntu-latest
-    environment: npm-publish
     permissions:
       contents: read
-      # Required for npm provenance via OIDC.
+      # Lets GitHub mint the OIDC token npm exchanges for short-lived publish
+      # rights. Without this the publish step cannot authenticate at all.
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +38,12 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm >= 11.5.1; Node 22 still ships npm 10.
+      - name: Use an npm that supports trusted publishing
+        run: |
+          npm install -g npm@latest
+          npm --version
 
       - name: Enable pnpm
         run: corepack enable
@@ -56,7 +73,7 @@ jobs:
             exit 1
           fi
 
+      # No NODE_AUTH_TOKEN: credentials come from the OIDC exchange above.
+      # Provenance is attached automatically under trusted publishing.
       - name: Publish
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
