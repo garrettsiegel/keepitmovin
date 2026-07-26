@@ -59,6 +59,10 @@
         "minTranscriptGrowthChars": 2000
       }
     },
+    "watchdog": {
+      "enabled": true,
+      "action": "warn"
+    },
     "providers": [
       {
         "name": "claude",
@@ -78,7 +82,10 @@
           "upgrade to increase your usage limit",
           "you've reached your usage limit",
           "selected model is at capacity"
-        ]
+        ],
+        "compactionProbe": {
+          "kind": "claude-transcript"
+        }
       },
       {
         "name": "codex",
@@ -99,6 +106,9 @@
           "reached your usage limit"
         ],
         "usageProbe": {
+          "kind": "codex-session-files"
+        },
+        "compactionProbe": {
           "kind": "codex-session-files"
         }
       },

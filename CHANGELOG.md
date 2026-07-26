@@ -119,7 +119,8 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 - Removed the non-interactive task mode; keepitmovin is the interactive session harness only.
 
-[Unreleased]: https://github.com/garrettsiegel/keepitmovin/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/garrettsiegel/keepitmovin/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/garrettsiegel/keepitmovin/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/garrettsiegel/keepitmovin/compare/v1.6.1...v2.0.0
 [1.6.1]: https://github.com/garrettsiegel/keepitmovin/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/garrettsiegel/keepitmovin/compare/v1.5.0...v1.6.0

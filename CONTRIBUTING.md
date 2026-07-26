@@ -8,7 +8,7 @@ You need Node 20+ and [pnpm](https://pnpm.io) 10.23.0 (via corepack: `corepack e
 
 ```sh
 git clone https://github.com/garrettsiegel/keepitmovin.git
-cd kim
+cd keepitmovin
 pnpm install
 pnpm build
 ```

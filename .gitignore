@@ -5,6 +5,8 @@ node_modules/
 # Build outputs
 dist/
 .turbo/
+.astro/
+site/dist/
 
 # TypeScript
 *.tsbuildinfo
@@ -14,8 +16,10 @@ dist/
 
 # Environment
 .env
-.env.local
-.env.*.local
+.env*.local
+
+# Deploy
+.vercel/
 
 # OS
 .DS_Store
@@ -28,12 +32,14 @@ pnpm-debug.log*
 
 # Editors
 .idea/
+.vscode/
+.claude/settings.local.json
+
 # Internal planning/marketing docs kept out of the public repo
 marketing/
 BRAND.md
+PLAN.md
+DESIGN.md
 
-# Astro (nested site/) build cache
-.astro/
-site/dist/
-.vercel
-.env*.local
+# Scraped third-party reference captures (design-tool byproducts, not sources)
+.firecrawl/

@@ -3,8 +3,9 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 keepitmovin is an interactive terminal harness for coding agents. It launches a coding tool
-(Claude Code, Codex, Antigravity, opencode, Grok Build, Cursor Agent, Aider, Goose, Amp,
-Factory Droid, GitHub Copilot CLI, Cline, Ollama, …) inside a PTY, watches its output, and
+(Claude Code, Codex, Antigravity, opencode, Grok Build, Cursor Agent, GitHub Copilot CLI,
+Ollama — plus hidden entries such as Aider, Goose, Amp, Factory Droid and Cline, which stay in
+the catalog but are excluded from defaults and docs) inside a PTY, watches its output, and
 on a recognizable limit/failure builds a handoff file and switches to the next configured provider.
 
 For product/UX context see [README.md](./README.md) (usage). This file is the agent-facing
@@ -12,24 +13,29 @@ build/architecture/gotcha guide.
 
 ## Build / Test / Lint
 
-Run from the monorepo root (prefer `~/Library/pnpm/pnpm` — see the pnpm PATH gotcha in root AGENTS.md):
+This repo is self-contained — it builds from a plain clone with no workspace or Turborepo
+around it. Run everything from the repo root:
 
 ```sh
-~/Library/pnpm/pnpm --filter keepitmovin build   # tsc -> dist/
-~/Library/pnpm/pnpm --filter keepitmovin test    # vitest run
-~/Library/pnpm/pnpm --filter keepitmovin lint    # tsc --noEmit
-~/Library/pnpm/pnpm --filter keepitmovin dev     # tsx src/cli.ts (run the CLI without building)
+pnpm install   # --frozen-lockfile in CI
+pnpm build     # tsc -> dist/
+pnpm test      # vitest run
+pnpm lint      # tsc --noEmit
+pnpm dev       # tsx src/cli.ts (run the CLI without building)
 
 # Single test file (extra args pass through to `vitest run` as filters):
-~/Library/pnpm/pnpm --filter keepitmovin test test/errors.test.ts
+pnpm test test/errors.test.ts
 ```
 
 Tests live in `test/<module>.test.ts`, one file per `src/` module (vitest defaults, no
 `vitest.config`). Releases go through `pnpm release <patch|minor|major>` (`scripts/release.sh`:
-version bump + tag + push + npm publish; supports `--dry-run`).
+version bump + tag + push; supports `--dry-run`). Publishing happens in CI from the tag
+(`.github/workflows/release.yml`) with npm provenance — never from a laptop.
 
-Before finishing any task: `build`, `test`, and `lint` must all pass. Then run root `pnpm build`
-(Turborepo) to confirm the monorepo still builds.
+Before finishing any task: `build`, `test`, and `lint` must all pass.
+
+> When this package is checked out inside the personal monorepo, the surrounding workspace's
+> pnpm quirks apply (see that repo's AGENTS.md). Nothing in this repo depends on them.
 
 ## Architecture
 
@@ -66,9 +72,8 @@ Other supporting modules:
 
 | Dir | What it is |
 |---|---|
-| `site/` | The keepitmovin.dev website — Astro 5, fully static, no UI framework. **Standalone package (`keepitmovin-site`) with its own `pnpm-lock.yaml`, not part of the monorepo workspace** — run `pnpm install` / `pnpm dev` / `pnpm build` from inside `site/`. Deployed on Vercel (frozen lockfile install, so keep `site/pnpm-lock.yaml` in sync with its `package.json`). Docs pages mirror README wording — re-sync them when README behavior changes. |
+| `site/` | The keepitmovin.dev website — Astro 5, fully static, no UI framework. **Standalone package (`keepitmovin-site`) with its own `pnpm-lock.yaml`, separate from this package** — run `pnpm install` / `pnpm dev` / `pnpm build` from inside `site/`. Deployed on Vercel (frozen lockfile install, so keep `site/pnpm-lock.yaml` in sync with its `package.json`). Docs pages mirror README wording — re-sync them when README behavior changes. |
 | `demo/` | VHS recording setup for the README hero GIF (`public/kim-demo.gif`). It drives the **real** harness; only the agents are stubs (`agent.sh`), with catalog-avoiding internal names `demo-a`/`demo-b`. See `demo/README.md` before regenerating. |
-| `marketing/` | Launch copy (Product Hunt listing, X thread, comparison table). Prose only — keep claims in sync with actual tool support. |
 | `scripts/` | `release.sh` (the `pnpm release` flow). |
 
 ## Conventions
@@ -118,5 +123,6 @@ Other supporting modules:
 
 ## When Something Notable Happens
 
-Record errors, preferences, or structural decisions in the **Notable Decisions & Lessons** section of
-the root [AGENTS.md](../../AGENTS.md) so future agents stay informed.
+Record errors, preferences, or structural decisions here (in Gotchas, or the relevant section
+above) so future agents stay informed. When this package sits inside the personal monorepo, also
+mirror cross-cutting lessons into that repo's AGENTS.md.
