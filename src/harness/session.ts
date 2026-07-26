@@ -1,5 +1,7 @@
 import chalk from "chalk";
 import { createBootstrapWriter } from "./bootstrap-input.js";
+import { DEFAULT_TRANSCRIPT_LIMIT_CHARS } from "../config/config-schema.js";
+import type { NudgeTiming } from "../handoff/refresh.js";
 import type { AgentErrorType, AppliedRoute, HarnessAttemptLog, InteractiveProviderConfig, KeepitmovinConfig } from "../config/types.js";
 import { detectExitFailure, detectLiveFailure, getManualSwitchSequence } from "../detection/failure-detection.js";
 import { renderInteractiveLaunch } from "../providers/interactive.js";
@@ -27,7 +29,8 @@ export const waitForProvider = async (
   input: NodeJS.ReadStream | undefined,
   output: NodeJS.WriteStream | undefined,
   usageProbeOptions?: UsageProbeOptions,
-  compactionProbeOptions?: CompactionProbeOptions
+  compactionProbeOptions?: CompactionProbeOptions,
+  nudgeTiming?: NudgeTiming
 ): Promise<HarnessAttemptLog> => {
   const launch = renderInteractiveLaunch(provider, {
     cwd,
@@ -36,7 +39,7 @@ export const waitForProvider = async (
     sessionPrompt,
     route
   });
-  const transcript = new RollingTranscript(config.harness.transcriptLimitChars);
+  const transcript = new RollingTranscript(DEFAULT_TRANSCRIPT_LIMIT_CHARS);
   const startedAt = new Date().toISOString();
   const manualSwitchSequence = getManualSwitchSequence(config);
   let detectedError: AgentErrorType | undefined;
@@ -98,6 +101,7 @@ export const waitForProvider = async (
     cwd,
     handoffPath,
     resolvedProbe,
+    nudgeTiming,
     usageProbeOptions,
     transcriptLength: () => transcript.text().length,
     lastActivityAt: () => lastActivityAt,

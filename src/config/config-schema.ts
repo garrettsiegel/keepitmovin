@@ -15,6 +15,28 @@ export const DEFAULT_SESSIONS_DIR = ".keepitmovin/sessions";
 export const DEFAULT_HANDOFF_PATH = ".keepitmovin/current/handoff.md";
 export const DEFAULT_HANDOFF_ARCHIVE_DIR = ".keepitmovin/handoffs";
 export const DEFAULT_TRANSCRIPT_LIMIT_CHARS = 80_000;
+export const DEFAULT_MAX_DIFF_CHARS = 20_000;
+
+/**
+ * Failures that hand off to the next tool. Per-provider `fallbackOn` overrides
+ * this; there is deliberately no global knob, because two places expressing one
+ * policy only ever produced configs that disagreed with themselves.
+ */
+export const DEFAULT_FALLBACK_ON: readonly z.infer<typeof agentErrorTypeSchema>[] = [
+  "rate_limit",
+  "quota_exceeded",
+  "auth_error",
+  "timeout",
+  "command_not_found",
+  "nonzero_exit"
+];
+
+/** How the stale-handoff nudge is paced. Not configurable — see handoffRefresh.enabled to turn it off. */
+export const HANDOFF_NUDGE = {
+  staleAfterMs: 300_000,
+  idleForMs: 10_000,
+  minTranscriptGrowthChars: 2_000
+} as const;
 
 export const agentErrorTypeSchema = z.enum([
   "rate_limit",
@@ -67,20 +89,6 @@ export const interactiveProviderConfigSchema = z.object({
 });
 
 export const keepitmovinConfigSchema = z.object({
-  fallbackOn: z.array(agentErrorTypeSchema).default([
-    "rate_limit",
-    "quota_exceeded",
-    "auth_error",
-    "timeout",
-    "command_not_found",
-    "nonzero_exit"
-  ]),
-  context: z.object({
-    maxDiffChars: z.number().int().positive().default(20_000)
-  }).prefault({}),
-  logs: z.object({
-    sessionsDir: z.string().default(DEFAULT_SESSIONS_DIR)
-  }).prefault({}),
   updates: z.object({
     // Off by default: `kim` should reach your tool without asking anything.
     // Set `"checkOnStart": true` to have keepitmovin check for tool updates.
@@ -92,12 +100,10 @@ export const keepitmovinConfigSchema = z.object({
   harness: z.object({
     setupComplete: z.boolean().default(false),
     providerOrder: z.array(z.string()).default(getDefaultProviderOrder()),
-    transcriptLimitChars: z.number().int().positive().default(DEFAULT_TRANSCRIPT_LIMIT_CHARS),
-    handoffPath: z.string().default(DEFAULT_HANDOFF_PATH),
-    handoffArchiveDir: z.string().default(DEFAULT_HANDOFF_ARCHIVE_DIR),
     manualSwitchKey: z.string().default("ctrl-]"),
+    // 0 disables it. The only way out of a tool that has wedged without
+    // printing anything keepitmovin can recognize, so it stays configurable.
     idleTimeoutMs: z.number().int().min(0).default(0),
-    autoAppendCheckpoints: z.boolean().default(true),
     usageProbe: z
       .object({
         enabled: z.boolean().default(true),
@@ -108,20 +114,11 @@ export const keepitmovinConfigSchema = z.object({
     handoffRefresh: z
       .object({
         enabled: z.boolean().default(true),
-        intervalMs: z.number().int().min(1_000).default(60_000),
-        nudge: z
-          .object({
-            enabled: z.boolean().default(true),
-            staleAfterMs: z.number().int().positive().default(300_000),
-            idleForMs: z.number().int().positive().default(10_000),
-            minTranscriptGrowthChars: z.number().int().positive().default(2_000)
-          })
-          .prefault({})
+        intervalMs: z.number().int().min(1_000).default(60_000)
       })
       .prefault({}),
     watchdog: z.object({
-      enabled: z.boolean().default(true),
-      action: z.literal("warn").default("warn")
+      enabled: z.boolean().default(true)
     }).prefault({}),
     providers: z.array(interactiveProviderConfigSchema).default(getDefaultInteractiveProviders())
   // Every field above carries its own .default(), so an absent `harness` key is

@@ -1,6 +1,7 @@
 import chalk from "chalk";
 import type { CompactionEventLog, HarnessAttemptLog, InteractiveProviderConfig, KeepitmovinConfig } from "../config/types.js";
 import { buildCompactionNudgeMessage, refreshHandoffFile, startHandoffWatcher } from "../handoff/refresh.js";
+import type { NudgeTiming } from "../handoff/refresh.js";
 import { startCompactionProbe, type CompactionProbeOptions } from "../probes/compaction.js";
 import { buildAttemptLog } from "./attempt-log.js";
 import {
@@ -53,6 +54,8 @@ export interface SessionWatcherContext {
   cwd: string;
   handoffPath: string;
   resolvedProbe: ResolvedUsageProbe | undefined;
+  /** Test-only: overrides the fixed nudge pacing so tests need not wait minutes. */
+  nudgeTiming?: NudgeTiming;
   usageProbeOptions?: UsageProbeOptions;
   transcriptLength: () => number;
   lastActivityAt: () => number;
@@ -100,6 +103,7 @@ export const armSessionWatchers = (ctx: SessionWatcherContext): (() => void) => 
       cwd: ctx.cwd,
       config: ctx.config,
       handoffPath: ctx.handoffPath,
+      nudgeTiming: ctx.nudgeTiming,
       transcriptLength: ctx.transcriptLength,
       lastActivityAt: ctx.lastActivityAt,
       isSettled: ctx.isSettled,

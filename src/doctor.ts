@@ -1,6 +1,6 @@
 import path from "node:path";
 import process from "node:process";
-import { DEFAULT_CONFIG_FILE, loadConfig } from "./config/index.js";
+import { DEFAULT_CONFIG_FILE, DEFAULT_SESSIONS_DIR, loadConfig } from "./config/index.js";
 import { getGitSnapshot } from "./util/git.js";
 import { assertConfigTrusted } from "./config/trust.js";
 import { getProviderCatalog } from "./providers/catalog.js";
@@ -11,7 +11,6 @@ import {
   type ProviderHealth
 } from "./providers/health.js";
 import { readProviderUsage, resolveUsageProbe, type UsageSnapshot } from "./probes/usage.js";
-import type { KeepitmovinConfig } from "./config/types.js";
 
 export type { ProviderHealth } from "./providers/health.js";
 
@@ -38,17 +37,8 @@ export interface DoctorOptions {
   includeAllCatalog?: boolean;
 }
 
-const resolveSessionsDir = (
-  cwd: string,
-  config: KeepitmovinConfig,
-  configPath?: string
-): string => {
-  const baseDir = configPath ? path.dirname(configPath) : cwd;
-
-  return path.isAbsolute(config.logs.sessionsDir)
-    ? config.logs.sessionsDir
-    : path.join(baseDir, config.logs.sessionsDir);
-};
+const resolveSessionsDir = (cwd: string, configPath?: string): string =>
+  path.join(configPath ? path.dirname(configPath) : cwd, DEFAULT_SESSIONS_DIR);
 
 export const runDoctor = async (
   cwdInput: string,
@@ -100,7 +90,7 @@ export const runDoctor = async (
     usingDefaultConfig: !loaded.path,
     gitRepo: gitContext.isGitRepo,
     changedFiles: gitContext.changedFiles,
-    sessionsDir: resolveSessionsDir(cwd, loaded.config, loaded.path),
+    sessionsDir: resolveSessionsDir(cwd, loaded.path),
     interactiveProviderHealth,
     catalogProviderHealth,
     readyInteractiveProviderCount: controllableInteractiveProviderHealth.filter(

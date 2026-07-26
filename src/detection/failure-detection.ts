@@ -4,6 +4,7 @@ import {
   matchLimitPattern,
   matchProviderLimitPattern
 } from "./errors.js";
+import { DEFAULT_FALLBACK_ON } from "../config/config-schema.js";
 import type { AgentErrorType, InteractiveProviderConfig, KeepitmovinConfig } from "../config/types.js";
 
 // Control sequences for the supported manual-switch keys. Values are the raw
@@ -172,7 +173,7 @@ export const detectLiveFailure = (
   ignore: Array<string | undefined>
 ): AgentErrorType | undefined => {
   const cleaned = stripIgnored(tail, ignore);
-  const fallbackOn = provider.fallbackOn ?? config.fallbackOn;
+  const fallbackOn = provider.fallbackOn ?? DEFAULT_FALLBACK_ON;
   let previousLine: string | undefined;
 
   for (const line of cleaned.split("\n")) {
@@ -220,7 +221,7 @@ export const detectExitFailure = (
   ignore: Array<string | undefined>
 ): AgentErrorType | undefined => {
   const detected = classifyError(stripIgnored(tail, ignore), "", exitCode ?? 1);
-  const fallbackOn = provider.fallbackOn ?? config.fallbackOn;
+  const fallbackOn = provider.fallbackOn ?? DEFAULT_FALLBACK_ON;
 
   return detected && fallbackOn.includes(detected) ? detected : undefined;
 };

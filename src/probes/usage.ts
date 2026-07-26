@@ -1,6 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { DEFAULT_FALLBACK_ON } from "../config/config-schema.js";
 import type { KeepitmovinConfig, InteractiveProviderConfig, UsageProbeSpec } from "../config/types.js";
 // Snapshot of a tool's own reported usage, read from its local session files.
 export interface UsageSnapshot {
@@ -174,7 +175,7 @@ export const resolveUsageProbe = (
   if (!spec || !settings.enabled) {
     return undefined;
   }
-  const fallbackOn = provider.fallbackOn ?? config.fallbackOn;
+  const fallbackOn = provider.fallbackOn ?? DEFAULT_FALLBACK_ON;
   if (!fallbackOn.includes("rate_limit")) {
     return undefined;
   }

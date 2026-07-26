@@ -2,6 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import { formatChangedFiles, formatGitSnapshot, getChangedFiles, getGitSnapshot } from "../util/git.js";
 import { redactSecrets } from "../util/redact.js";
 import type { KeepitmovinConfig } from "../config/types.js";
+import { HANDOFF_NUDGE } from "../config/config-schema.js";
 import { writeFileAtomic } from "../util/paths.js";
 
 export const SWITCH_HISTORY_LIMIT = 10;
@@ -133,10 +134,22 @@ export const buildCompactionNudgeMessage = (handoffPath: string): string =>
   `keepitmovin detected that this tool compacted its context. Re-read ${handoffPath}, ` +
   "then revise Working State, Commands And Checks, Blockers, and Next Step before continuing.\n";
 
+/**
+ * How long the narrative must sit stale, how quiet the tool must be, and how
+ * much work must have happened before keepitmovin nudges. Fixed in
+ * `HANDOFF_NUDGE`; overridable here so tests don't have to wait five minutes.
+ */
+export interface NudgeTiming {
+  staleAfterMs: number;
+  idleForMs: number;
+  minTranscriptGrowthChars: number;
+}
+
 export interface HandoffWatcherContext {
   cwd: string;
   config: KeepitmovinConfig;
   handoffPath: string;
+  nudgeTiming?: NudgeTiming;
   transcriptLength: () => number; // RollingTranscript text().length
   lastActivityAt: () => number; // epoch ms of last child output OR user input
   isSettled: () => boolean;
@@ -161,12 +174,9 @@ export const startHandoffWatcher = (ctx: HandoffWatcherContext): (() => void) =>
   let lastNarrative: string | undefined;
   let narrativeChangedAt = Date.now();
 
-  const maybeNudge = async (): Promise<void> => {
-    const nudge = settings.nudge;
-    if (!nudge.enabled) {
-      return;
-    }
+  const nudge = ctx.nudgeTiming ?? HANDOFF_NUDGE;
 
+  const maybeNudge = async (): Promise<void> => {
     let content: string;
     try {
       content = await readFile(ctx.handoffPath, "utf8");

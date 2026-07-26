@@ -16,6 +16,7 @@ import {
 } from "../handoff/file.js";
 import { getEnabledInteractiveProviders } from "../providers/interactive.js";
 import { waitForProvider } from "./session.js";
+import type { NudgeTiming } from "../handoff/refresh.js";
 import { defaultPtyFactory, type PtyFactory } from "../pty/factory.js";
 import { chooseSwitchProvider, type SwitchSelector } from "./switch-menu.js";
 import { renderCommercialBreak } from "../ui/terminal.js";
@@ -38,6 +39,8 @@ export interface HarnessOptions {
   // Test-only injection: points provider usage probes at a fixture directory.
   usageProbeOptions?: UsageProbeOptions;
   compactionProbeOptions?: CompactionProbeOptions;
+  /** Test-only: overrides the fixed stale-handoff nudge pacing. */
+  nudgeTiming?: NudgeTiming;
   task?: string;
   routeDecision?: RouteDecision;
   routeOverrides?: RouteOverrides;
@@ -132,7 +135,8 @@ export const runHarness = async (
       options.input,
       options.output,
       options.usageProbeOptions,
-      options.compactionProbeOptions
+      options.compactionProbeOptions,
+      options.nudgeTiming
     );
     attempts.push(
       options.config.routing.telemetry

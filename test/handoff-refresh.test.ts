@@ -186,12 +186,7 @@ describe("startHandoffWatcher", () => {
       transcriptLength: () => transcriptLength,
       lastActivityAt: () => Date.now() - 60_000 // idle for a minute
     });
-    ctx.config.harness.handoffRefresh.nudge = {
-      enabled: true,
-      staleAfterMs: 50,
-      idleForMs: 10,
-      minTranscriptGrowthChars: 5
-    };
+    ctx.nudgeTiming = { staleAfterMs: 50, idleForMs: 10, minTranscriptGrowthChars: 5 };
 
     const stop = startHandoffWatcher(ctx);
     transcriptLength = 100; // tool produced output AFTER arming, never touched the narrative
@@ -213,18 +208,13 @@ describe("startHandoffWatcher", () => {
     expect(writes).toHaveLength(0);
   });
 
-  it("refreshes but never nudges when the nudge is disabled", async () => {
+  it("refreshes but never nudges while the narrative is still fresh", async () => {
     let transcriptLength = 0;
     const { ctx, handoffPath, writes } = await watcherContext({
       transcriptLength: () => transcriptLength,
       lastActivityAt: () => Date.now() - 60_000
     });
-    ctx.config.harness.handoffRefresh.nudge = {
-      enabled: false,
-      staleAfterMs: 50,
-      idleForMs: 10,
-      minTranscriptGrowthChars: 5
-    };
+    // Default pacing: five minutes of staleness, which this test never reaches.
     transcriptLength = 100;
 
     const stop = startHandoffWatcher(ctx);

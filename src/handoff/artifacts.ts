@@ -2,6 +2,11 @@ import { readdir, rm, unlink } from "node:fs/promises";
 import path from "node:path";
 import { getGitRoot } from "../util/git.js";
 import { isSafeToRecursivelyDelete, isStrictlyInside, resolveFromCwd } from "../util/paths.js";
+import {
+  DEFAULT_HANDOFF_ARCHIVE_DIR,
+  DEFAULT_HANDOFF_PATH,
+  DEFAULT_SESSIONS_DIR
+} from "../config/config-schema.js";
 import type { KeepitmovinConfig } from "../config/types.js";
 
 export interface HandoffPaths {
@@ -10,8 +15,8 @@ export interface HandoffPaths {
 }
 
 export const getHandoffPaths = (cwd: string, config: KeepitmovinConfig): HandoffPaths => ({
-  livePath: resolveFromCwd(cwd, config.harness.handoffPath),
-  archiveDir: resolveFromCwd(cwd, config.harness.handoffArchiveDir)
+  livePath: resolveFromCwd(cwd, DEFAULT_HANDOFF_PATH),
+  archiveDir: resolveFromCwd(cwd, DEFAULT_HANDOFF_ARCHIVE_DIR)
 });
 
 const removeExactFile = async (file: string | undefined): Promise<boolean> => {
@@ -32,7 +37,7 @@ export const clearHandoffArtifacts = async (
   config: KeepitmovinConfig
 ): Promise<string[]> => {
   const paths = getHandoffPaths(cwd, config);
-  const sessionsDir = resolveFromCwd(cwd, config.logs.sessionsDir);
+  const sessionsDir = resolveFromCwd(cwd, DEFAULT_SESSIONS_DIR);
   const gitRoot = await getGitRoot(cwd);
   const removed: string[] = [];
   const exactLiveFile = isStrictlyInside(paths.livePath, cwd) &&

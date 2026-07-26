@@ -12,10 +12,8 @@ describe("runHarness — handoff refresh", () => {
     const cwd = await makeTempDir();
     const config = defaultConfig();
     config.harness.setupComplete = true;
-    config.harness.autoAppendCheckpoints = false; // only the watcher writes
     config.harness.idleTimeoutMs = 1_400;
     config.harness.handoffRefresh.intervalMs = 1_000;
-    config.harness.handoffRefresh.nudge.enabled = false;
     config.harness.providerOrder = ["solo"];
     config.harness.providers = [
       {
@@ -37,7 +35,7 @@ describe("runHarness — handoff refresh", () => {
     expect(content).toContain("## Repository Snapshot");
     expect(content).not.toContain("Recent diff:");
     // The watcher rewrote the snapshot to a time after the session-start line —
-    // proof it fired (nothing else writes the file with autoAppendCheckpoints off).
+    // proof it fired.
     const startedLine = content.split("\n").find((line) => line.includes("Session started")) ?? "";
     const startedTs = startedLine.replace(/^- /, "").split("—")[0]?.trim();
     const refreshedTs = content.match(/Last refreshed: (\S+)/)?.[1];
@@ -51,12 +49,6 @@ describe("runHarness — handoff refresh", () => {
     config.harness.setupComplete = true;
     config.harness.idleTimeoutMs = 1_300;
     config.harness.handoffRefresh.intervalMs = 1_000;
-    config.harness.handoffRefresh.nudge = {
-      enabled: true,
-      staleAfterMs: 100,
-      idleForMs: 50,
-      minTranscriptGrowthChars: 5
-    };
     config.harness.providerOrder = ["solo"];
     config.harness.providers = [
       {
@@ -75,24 +67,19 @@ describe("runHarness — handoff refresh", () => {
       config,
       ptyFactory,
       switchSelector: async () => undefined,
+      nudgeTiming: { staleAfterMs: 100, idleForMs: 50, minTranscriptGrowthChars: 5 },
       output: new PassThrough() as unknown as NodeJS.WriteStream
     });
 
     expect(pty?.writes.some((write) => write.includes("Please update the keepitmovin handoff file"))).toBe(true);
   });
 
-  it("does not nudge when the nudge is disabled", async () => {
+  it("does not nudge while the handoff narrative is still fresh", async () => {
     const cwd = await makeTempDir();
     const config = defaultConfig();
     config.harness.setupComplete = true;
     config.harness.idleTimeoutMs = 1_300;
     config.harness.handoffRefresh.intervalMs = 1_000;
-    config.harness.handoffRefresh.nudge = {
-      enabled: false,
-      staleAfterMs: 100,
-      idleForMs: 50,
-      minTranscriptGrowthChars: 5
-    };
     config.harness.providerOrder = ["solo"];
     config.harness.providers = [
       {

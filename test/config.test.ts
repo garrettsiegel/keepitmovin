@@ -176,14 +176,36 @@ describe("config", () => {
   it("defaults harness.handoffRefresh settings", () => {
     expect(defaultConfig().harness.handoffRefresh).toEqual({
       enabled: true,
-      intervalMs: 60_000,
-      nudge: {
-        enabled: true,
-        staleAfterMs: 300_000,
-        idleForMs: 10_000,
-        minTranscriptGrowthChars: 2_000
-      }
+      intervalMs: 60_000
     });
+  });
+
+  // v3 configs carried a dozen knobs that are now fixed constants. Someone
+  // upgrading must not be met with a validation error over keys they were told
+  // to set — the removed ones are ignored and everything else still applies.
+  it("still loads a v3 config full of removed keys", async () => {
+    const cwd = await makeRealTempDir();
+    const legacy = JSON.parse(
+      await readFile(path.join(import.meta.dirname, "fixtures", "legacy-v3-config.json"), "utf8")
+    ) as Record<string, unknown>;
+    await writeFile(
+      path.join(cwd, "keepitmovin.config.json"),
+      `${JSON.stringify(legacy)}\n`,
+      "utf8"
+    );
+
+    const loaded = await loadConfig(cwd);
+
+    // The removed keys are dropped rather than rejected...
+    expect(loaded.config).not.toHaveProperty("context");
+    expect(loaded.config).not.toHaveProperty("logs");
+    expect(loaded.config).not.toHaveProperty("fallbackOn");
+    expect(loaded.config.harness).not.toHaveProperty("handoffPath");
+    expect(loaded.config.harness).not.toHaveProperty("autoAppendCheckpoints");
+    expect(loaded.config.harness.handoffRefresh).not.toHaveProperty("nudge");
+    // ...and the settings that survived still come through.
+    expect(loaded.config.harness.providerOrder.length).toBeGreaterThan(0);
+    expect(loaded.config.harness.usageProbe.enabled).toBe(true);
   });
 
   it("keeps task routing opt-in with local telemetry defaults", () => {

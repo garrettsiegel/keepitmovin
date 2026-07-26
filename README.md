@@ -179,7 +179,7 @@ three times in five minutes, Codex usage burn rising more than five times above 
 baseline, or output continuing for ten minutes without a project or handoff progress signal.
 These warnings are local telemetry only. They never switch or stop a tool.
 
-The watchdog defaults to `{ "enabled": true, "action": "warn" }` under `harness.watchdog`.
+The watchdog is on by default; turn it off with `"watchdog": { "enabled": false }` under `harness`.
 `action` intentionally accepts only `"warn"`; automatic switching is not enabled until these
 signals have enough real-world evidence to justify it.
 
@@ -205,10 +205,6 @@ Configure it under `harness.handoffRefresh` in `keepitmovin.config.json`:
 |---|---|---|
 | `enabled` | `true` | Master switch for the whole refresh/nudge system. |
 | `intervalMs` | `60000` | How often keepitmovin refreshes the mechanical sections and checks for staleness. |
-| `nudge.enabled` | `true` | Whether to type the stale-handoff reminder into the tool. Set `false` to disable nudges. |
-| `nudge.staleAfterMs` | `300000` | How long the narrative can go unchanged before it's considered stale. |
-| `nudge.idleForMs` | `10000` | The tool must be idle at least this long before a nudge is sent. |
-| `nudge.minTranscriptGrowthChars` | `2000` | How much output the tool must produce before a nudge is warranted. |
 
 ## Supported Tools
 

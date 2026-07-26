@@ -115,10 +115,6 @@ export const appendHandoffCheckpoint = async (
   config: KeepitmovinConfig,
   checkpoint: HandoffCheckpoint
 ): Promise<void> => {
-  if (!config.harness.autoAppendCheckpoints) {
-    return;
-  }
-
   const paths = getHandoffPaths(cwd, config);
   const timestamp = checkpoint.timestamp ?? new Date().toISOString();
   let content: string;

@@ -1,7 +1,7 @@
 import { existsSync, realpathSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { loadConfig } from "../config/index.js";
+import { DEFAULT_HANDOFF_PATH, DEFAULT_SESSIONS_DIR, loadConfig } from "../config/index.js";
 import { redactSecrets } from "../util/redact.js";
 import { readRecentSessionLogs } from "../session/log.js";
 
@@ -54,8 +54,7 @@ const containedPath = (root: string, candidate: string): string => {
 };
 
 export const readMcpHandoff = async (projectRoot: string): Promise<string> => {
-  const { config } = await loadConfig(projectRoot);
-  const handoffPath = containedPath(projectRoot, config.harness.handoffPath);
+  const handoffPath = containedPath(projectRoot, DEFAULT_HANDOFF_PATH);
   try {
     return redactSecrets(await readFile(handoffPath, "utf8"));
   } catch {
@@ -68,7 +67,7 @@ export const readMcpSessionSummaries = async (
   limit = MAX_MCP_SESSIONS
 ): Promise<McpSessionSummary[]> => {
   const { config } = await loadConfig(projectRoot);
-  containedPath(projectRoot, config.logs.sessionsDir);
+  containedPath(projectRoot, DEFAULT_SESSIONS_DIR);
   const logs = await readRecentSessionLogs(
     projectRoot,
     config,

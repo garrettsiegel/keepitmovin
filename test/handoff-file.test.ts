@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config/index.js";
 import { makeTempDir } from "./support/tmp.js";
+import { isSafeToRecursivelyDelete } from "../src/util/paths.js";
 import {
   appendHandoffCheckpoint,
   archiveHandoffFile,
@@ -113,54 +114,41 @@ describe("handoff file helpers", () => {
     await expect(stat(getHandoffPaths(cwd, config).livePath)).rejects.toThrow();
   });
 
-  it("removes only the handoff file when handoffPath resolves to the cwd", async () => {
+  // Handoff and session paths are fixed under .keepitmovin/ rather than
+  // configurable, so a mis-set path can no longer aim the clear at user files.
+  // The guards that made that safe are still what stands between `kim clear`
+  // and someone's repo, so they are tested directly.
+  it("leaves everything outside .keepitmovin/ alone when clearing", async () => {
     const cwd = await makeTempDir();
     const config = defaultConfig();
-    // A natural-looking but dangerous value: dirname resolves to the cwd itself.
-    config.harness.handoffPath = "handoff.md";
     const livePath = getHandoffPaths(cwd, config).livePath;
+    await mkdir(path.dirname(livePath), { recursive: true });
     await writeFile(livePath, "# handoff", "utf8");
-    // User files that must survive a clear, including the extension the unsafe
-    // fallback used to scan and delete.
     const userFile = path.join(cwd, "important.txt");
     const userMarkdown = path.join(cwd, "README.md");
     await writeFile(userFile, "keep me", "utf8");
     await writeFile(userMarkdown, "keep me too", "utf8");
 
-    const removed = await clearHandoffArtifacts(cwd, config);
+    await clearHandoffArtifacts(cwd, config);
 
-    // The cwd (and the user's file) must still exist; only the handoff file goes.
-    await expect(stat(userFile)).resolves.toBeDefined();
-    await expect(stat(userMarkdown)).resolves.toBeDefined();
+    await expect(readFile(userFile, "utf8")).resolves.toBe("keep me");
+    await expect(readFile(userMarkdown, "utf8")).resolves.toBe("keep me too");
     await expect(stat(cwd)).resolves.toBeDefined();
     await expect(stat(livePath)).rejects.toThrow();
-    expect(removed).toContain(cwd);
   });
 
-  it("does not scan an unsafe absolute sessions directory", async () => {
+  it("refuses to recursively delete the cwd, a git root, or anything outside it", async () => {
     const cwd = await makeTempDir();
-    const unsafeDir = await makeTempDir();
-    const config = defaultConfig();
-    config.logs.sessionsDir = unsafeDir;
-    const unrelatedJson = path.join(unsafeDir, "important.json");
-    await writeFile(unrelatedJson, "{}", "utf8");
+    const outside = await makeTempDir();
 
-    await clearHandoffArtifacts(cwd, config);
-
-    await expect(stat(unsafeDir)).resolves.toBeDefined();
-    await expect(stat(unrelatedJson)).resolves.toBeDefined();
-  });
-
-  it("does not delete an unrelated exact file from an unsafe handoff path", async () => {
-    const cwd = await makeTempDir();
-    const config = defaultConfig();
-    config.harness.handoffPath = "README.md";
-    const readme = path.join(cwd, "README.md");
-    await writeFile(readme, "user documentation", "utf8");
-
-    await clearHandoffArtifacts(cwd, config);
-
-    await expect(readFile(readme, "utf8")).resolves.toBe("user documentation");
+    expect(isSafeToRecursivelyDelete(path.join(cwd, ".keepitmovin", "sessions"), cwd)).toBe(true);
+    // The cwd itself, its parent, and unrelated absolute dirs are all refused.
+    expect(isSafeToRecursivelyDelete(cwd, cwd)).toBe(false);
+    expect(isSafeToRecursivelyDelete(path.dirname(cwd), cwd)).toBe(false);
+    expect(isSafeToRecursivelyDelete(outside, cwd)).toBe(false);
+    expect(isSafeToRecursivelyDelete(path.join(cwd, ".."), cwd)).toBe(false);
+    // A directory that happens to be the git root is refused even when inside.
+    expect(isSafeToRecursivelyDelete(cwd, cwd, { gitRoot: cwd })).toBe(false);
   });
 
   it("does not overwrite a stale handoff when recovery cannot be written", async () => {

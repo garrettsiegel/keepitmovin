@@ -2,7 +2,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { ensureArtifactsIgnored } from "../util/artifacts.js";
-import { agentErrorTypeSchema, DEFAULT_KEEPITMOVIN_DIR } from "../config/index.js";
+import { agentErrorTypeSchema, DEFAULT_KEEPITMOVIN_DIR, DEFAULT_SESSIONS_DIR } from "../config/index.js";
 import { redactSecrets } from "../util/redact.js";
 import { ARTIFACT_FILE_MODE, resolveFromCwd } from "../util/paths.js";
 import { reasoningEffortSchema, routingTierSchema } from "../routing/config.js";
@@ -79,7 +79,7 @@ const safeTimestamp = (date: Date): string =>
   date.toISOString().replaceAll(":", "-").replaceAll(".", "-");
 
 export const resolveSessionsDir = (cwd: string, config: KeepitmovinConfig): string =>
-  resolveFromCwd(cwd, config.logs.sessionsDir);
+  resolveFromCwd(cwd, DEFAULT_SESSIONS_DIR);
 
 export const writeSessionLog = async (
   cwd: string,
