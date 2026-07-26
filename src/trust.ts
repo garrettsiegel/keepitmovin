@@ -9,6 +9,7 @@ import {
   isCatalogHarnessProvider
 } from "./provider-catalog.js";
 import type { InteractiveProviderConfig, KeepitmovinConfig } from "./types.js";
+import { ARTIFACT_FILE_MODE } from "./paths.js";
 
 const TRUST_STORE_FILE = "trusted-configs.json";
 
@@ -82,8 +83,11 @@ const recordConfigTrust = async (
 ): Promise<void> => {
   const store = await readTrustStore(home);
   store[path.resolve(configPath)] = hash;
-  await mkdir(home, { recursive: true });
-  await writeFile(trustStorePath(home), `${JSON.stringify(store, null, 2)}\n`, "utf8");
+  await mkdir(home, { recursive: true, mode: 0o700 });
+  await writeFile(trustStorePath(home), `${JSON.stringify(store, null, 2)}\n`, {
+    encoding: "utf8",
+    mode: ARTIFACT_FILE_MODE
+  });
 };
 
 /**

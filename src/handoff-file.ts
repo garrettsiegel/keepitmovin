@@ -13,6 +13,7 @@ import {
 import { ensureArtifactsIgnored } from "./artifacts.js";
 import { DEFAULT_KEEPITMOVIN_DIR } from "./config.js";
 import { redactSecrets } from "./redact.js";
+import { ARTIFACT_FILE_MODE } from "./paths.js";
 
 export { buildProviderHandoffPrompt, buildSessionPrompt } from "./handoff-prompts.js";
 export { clearHandoffArtifacts, getHandoffPaths, type HandoffPaths } from "./handoff-artifacts.js";
@@ -37,8 +38,8 @@ export const createHandoffFile = async (
   const paths = getHandoffPaths(cwd, config);
   const gitContext = await getGitSnapshot(cwd);
   const changedFiles = await getChangedFiles(cwd);
-  await mkdir(path.dirname(paths.livePath), { recursive: true });
-  await mkdir(paths.archiveDir, { recursive: true });
+  await mkdir(path.dirname(paths.livePath), { recursive: true, mode: 0o700 });
+  await mkdir(paths.archiveDir, { recursive: true, mode: 0o700 });
   await ensureArtifactsIgnored(path.join(cwd, DEFAULT_KEEPITMOVIN_DIR));
   let stale: string | undefined;
   try {
@@ -48,7 +49,10 @@ export const createHandoffFile = async (
   }
   if (stale !== undefined) {
     const safeStartedAt = startedAt.replaceAll(":", "-").replaceAll(".", "-");
-    await writeFile(path.join(paths.archiveDir, `recovered-${safeStartedAt}.md`), stale, "utf8");
+    await writeFile(path.join(paths.archiveDir, `recovered-${safeStartedAt}.md`), stale, {
+      encoding: "utf8",
+      mode: ARTIFACT_FILE_MODE
+    });
   }
   const content = [
     "# keepitmovin Handoff",
@@ -102,7 +106,7 @@ export const createHandoffFile = async (
     "- None yet.",
     ""
   ].join("\n");
-  await writeFile(paths.livePath, content, "utf8");
+  await writeFile(paths.livePath, content, { encoding: "utf8", mode: ARTIFACT_FILE_MODE });
   return paths.livePath;
 };
 
@@ -141,7 +145,7 @@ export const appendHandoffCheckpoint = async (
     );
   }
 
-  await writeFile(paths.livePath, content, "utf8");
+  await writeFile(paths.livePath, content, { encoding: "utf8", mode: ARTIFACT_FILE_MODE });
   await refreshHandoffFile(cwd, config, paths.livePath);
 };
 
@@ -158,10 +162,10 @@ export const archiveHandoffFile = async (
     return undefined;
   }
 
-  await mkdir(paths.archiveDir, { recursive: true });
+  await mkdir(paths.archiveDir, { recursive: true, mode: 0o700 });
   const archivePath = path.join(paths.archiveDir, `${sessionId}.md`);
   const content = await readFile(paths.livePath, "utf8");
-  await writeFile(archivePath, content, "utf8");
+  await writeFile(archivePath, content, { encoding: "utf8", mode: ARTIFACT_FILE_MODE });
   return archivePath;
 };
 

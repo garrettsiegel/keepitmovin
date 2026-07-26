@@ -1,10 +1,11 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 import { defaultConfig } from "../src/config.js";
+import { readMcpHandoff } from "../src/mcp-data.js";
 import { createKeepitmovinMcpServer } from "../src/mcp-server.js";
 import { writeSessionLog } from "../src/session-log.js";
 
@@ -63,5 +64,34 @@ describe("read-only MCP server", () => {
 
     await client.close();
     await server.close();
+  });
+});
+
+describe("MCP path containment", () => {
+  it("refuses a handoff path that escapes the project root via a symlink", async () => {
+    // A lexical resolve alone reports this as inside the root, so without
+    // realpath resolution the target file would be streamed to any MCP client.
+    const root = path.join(os.tmpdir(), `kim-mcp-symlink-${Date.now()}-${Math.random()}`);
+    const outside = path.join(os.tmpdir(), `kim-mcp-outside-${Date.now()}-${Math.random()}`);
+    await mkdir(path.join(root, ".keepitmovin"), { recursive: true });
+    await mkdir(outside, { recursive: true });
+    await writeFile(path.join(outside, "handoff.md"), "SECRET", "utf8");
+    await symlink(outside, path.join(root, ".keepitmovin", "current"), "dir");
+
+    await writeFile(
+      path.join(root, "keepitmovin.config.json"),
+      JSON.stringify({ harness: { handoffPath: ".keepitmovin/current/handoff.md" } }),
+      "utf8"
+    );
+
+    await expect(readMcpHandoff(root)).rejects.toThrow(/outside the active MCP project root/);
+  });
+
+  it("still allows a real path inside the project root", async () => {
+    const root = path.join(os.tmpdir(), `kim-mcp-ok-${Date.now()}-${Math.random()}`);
+    await mkdir(path.join(root, ".keepitmovin", "current"), { recursive: true });
+    await writeFile(path.join(root, ".keepitmovin", "current", "handoff.md"), "# Handoff", "utf8");
+
+    await expect(readMcpHandoff(root)).resolves.toContain("# Handoff");
   });
 });

@@ -1,7 +1,7 @@
 import { execa } from "execa";
 import type { GitContext } from "./types.js";
 
-const runGit = async (cwd: string, args: string[]): Promise<string> => {
+const runGitRaw = async (cwd: string, args: string[]): Promise<string> => {
   try {
     const result = await execa("git", args, {
       cwd,
@@ -10,11 +10,14 @@ const runGit = async (cwd: string, args: string[]): Promise<string> => {
       stderr: "pipe"
     });
 
-    return result.exitCode === 0 ? result.stdout.trim() : "";
+    return result.exitCode === 0 ? result.stdout : "";
   } catch {
     return "";
   }
 };
+
+const runGit = async (cwd: string, args: string[]): Promise<string> =>
+  (await runGitRaw(cwd, args)).trim();
 
 export const isGitRepo = async (cwd: string): Promise<boolean> => {
   const result = await runGit(cwd, ["rev-parse", "--is-inside-work-tree"]);
@@ -27,20 +30,41 @@ export const getGitRoot = async (cwd: string): Promise<string | undefined> => {
 };
 
 export const getChangedFiles = async (cwd: string): Promise<string[]> => {
-  const status = await runGit(cwd, ["status", "--short"]);
+  // -z gives NUL-separated entries with paths verbatim, so paths containing
+  // spaces or non-ASCII characters need no unquoting. Plain `--short` also
+  // collapsed a rename into one bogus entry ("old.ts -> new.ts") because the
+  // arrow is part of the line rather than a separator.
+  // Raw, not trimmed: porcelain entries are "XY <path>" and an unstaged change
+  // leads with a space, which trimming would eat and shift the path offset.
+  const status = await runGitRaw(cwd, ["status", "--porcelain", "-z"]);
   if (!status) {
     return [];
   }
 
-  return [
-    ...new Set(
-      status
-        .split("\n")
-        .map((line) => line.slice(3).trim())
-        .filter(Boolean)
-        .map((file) => file.replace(/^"|"$/g, ""))
-    )
-  ].sort();
+  const entries = status.split("\0");
+  const files: string[] = [];
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (!entry) {
+      continue;
+    }
+
+    const code = entry.slice(0, 2);
+    files.push(entry.slice(3));
+
+    // A rename/copy is emitted as "R  <new>\0<old>\0" — the following NUL-
+    // separated field is the source path and must not be read as another entry.
+    if (code.startsWith("R") || code.startsWith("C")) {
+      const source = entries[index + 1];
+      if (source) {
+        files.push(source);
+      }
+      index += 1;
+    }
+  }
+
+  return [...new Set(files.filter(Boolean))].sort();
 };
 
 export const getGitContext = async (

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { ensureArtifactsIgnored } from "./artifacts.js";
 import { agentErrorTypeSchema, DEFAULT_KEEPITMOVIN_DIR } from "./config.js";
 import { redactSecrets } from "./redact.js";
-import { resolveFromCwd } from "./paths.js";
+import { ARTIFACT_FILE_MODE, resolveFromCwd } from "./paths.js";
 import { reasoningEffortSchema, routingTierSchema } from "./routing-config.js";
 import type { HarnessSessionLog, KeepitmovinConfig } from "./types.js";
 
@@ -87,7 +87,7 @@ export const writeSessionLog = async (
   log: HarnessSessionLog
 ): Promise<string> => {
   const sessionsDir = resolveSessionsDir(cwd, config);
-  await mkdir(sessionsDir, { recursive: true });
+  await mkdir(sessionsDir, { recursive: true, mode: 0o700 });
   await ensureArtifactsIgnored(path.join(cwd, DEFAULT_KEEPITMOVIN_DIR));
 
   const logPath = path.join(sessionsDir, `${safeTimestamp(new Date(log.startedAt))}.json`);
@@ -115,7 +115,7 @@ export const writeSessionLog = async (
   await writeFile(
     logPath,
     `${JSON.stringify({ ...redactedLog, sessionLogPath: logPath }, null, 2)}\n`,
-    "utf8"
+    { encoding: "utf8", mode: ARTIFACT_FILE_MODE }
   );
   return logPath;
 };

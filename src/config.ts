@@ -228,7 +228,15 @@ export const loadConfig = async (
   }
 
   const raw = await readFile(resolvedPath, "utf8");
-  const parsed = JSON.parse(raw) as unknown;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw) as unknown;
+  } catch (error) {
+    // A bare SyntaxError names neither the file nor what to do about it, and via
+    // the MCP server it surfaced to clients as an opaque failure.
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`keepitmovin config is not valid JSON: ${resolvedPath}\n  ${detail}`);
+  }
   return { config: normalizeConfig(keepitmovinConfigSchema.parse(parsed)), path: resolvedPath };
 };
 

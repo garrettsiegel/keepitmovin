@@ -1,7 +1,7 @@
 import path from "node:path";
 import process from "node:process";
 import { DEFAULT_CONFIG_FILE, loadConfig } from "./config.js";
-import { getGitContext } from "./git.js";
+import { getGitSnapshot } from "./git.js";
 import { assertConfigTrusted } from "./trust.js";
 import { getProviderCatalog } from "./provider-catalog.js";
 import {
@@ -62,7 +62,9 @@ export const runDoctor = async (
     configPath: loaded.path,
     interactive: Boolean(process.stdin.isTTY)
   });
-  const gitContext = await getGitContext(cwd, loaded.config.context.maxDiffChars);
+  // doctor only reports isGitRepo and changedFiles, so use the snapshot variant —
+  // getGitContext additionally runs a full `git diff -- .` whose result is unused.
+  const gitContext = await getGitSnapshot(cwd);
   const configuredInteractiveNames = new Set(
     loaded.config.harness.providers.map((provider) => provider.name)
   );

@@ -66,3 +66,12 @@ export const isSafeToRecursivelyDelete = (
 
   return isStrictlyInside(resolved, cwd) && hasKeepitmovinSegment;
 };
+/**
+ * Mode for artifacts keepitmovin persists (handoff files, session logs, the trust
+ * store). These hold redacted-but-still-sensitive transcript excerpts, so they
+ * are owner-only rather than the default 0644.
+ */
+export const ARTIFACT_FILE_MODE = 0o600;
+
+/** Mode for the directories those artifacts live in. */
+export const ARTIFACT_DIR_MODE = 0o700;
