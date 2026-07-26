@@ -1,4 +1,9 @@
-import { classifyError, isUsageWarning, matchLimitPattern, matchProviderLimitPattern } from "./errors.js";
+import {
+  classifyError,
+  isSuppressedUsageWarning,
+  matchLimitPattern,
+  matchProviderLimitPattern
+} from "./errors.js";
 import type { AgentErrorType, InteractiveProviderConfig, KeepitmovinConfig } from "./types.js";
 
 // Control sequences for the supported manual-switch keys. Values are the raw
@@ -49,22 +54,64 @@ const ERROR_LINE_INDICATORS = [
 ];
 
 // Words that signal a definitive status event (not prose discussion) when they
-// appear in the same line as a limit pattern. Handles tool-generated messages
-// like "Claude usage limit reached." that lack a technical error prefix.
-const STATUS_WORDS = [
-  "reached",
-  "exceeded",
-  "exceed",
-  "encountered",
-  "triggered",
-  "detected",
-  "hit"
-];
+// sit *next to* a limit pattern. Handles tool-generated messages like
+// "Claude usage limit reached." that lack a technical error prefix.
+//
+// These must never be matched as bare substrings anywhere on the line. Doing so
+// made ordinary agent prose force a handoff: "hit" is a substring of
+// "w-hit-espace", so "normalize whitespace before checking the rate limit string"
+// read as a status line, as did "if we hit the rate limit we should back off".
+const STATUS_WORD = /^(?:reached|exceeded|exceeds|exceed|encountered|triggered|detected|hit)$/;
+
+// How far from the matched pattern a status word is still considered part of the
+// same status phrase. A banner reads "<pattern> reached", never
+// "<status word> … five words … <pattern>".
+const STATUS_WORDS_AFTER = 3;
+
+// A status word may also *precede* the pattern ("You've hit your session limit"),
+// but only when the banner ends there. Prose that leads with a status word keeps
+// going into a clause ("if we hit the rate limit we should back off"), so a
+// trailing tail is what separates the two.
+const STATUS_WORDS_BEFORE = 2;
+const MAX_TRAILING_TOKENS_FOR_LEADING_STATUS = 1;
+
+const tokenize = (text: string): string[] => text.split(/[^a-z0-9]+/i).filter(Boolean);
+
+const isStatusWord = (token: string): boolean => STATUS_WORD.test(token);
+
+// True when a status word sits immediately around `pattern` inside `line`.
+const hasAdjacentStatusWord = (line: string, pattern: string): boolean => {
+  const index = line.indexOf(pattern);
+  if (index === -1) {
+    return false;
+  }
+
+  const after = tokenize(line.slice(index + pattern.length));
+  if (after.slice(0, STATUS_WORDS_AFTER).some(isStatusWord)) {
+    return true;
+  }
+
+  if (after.length > MAX_TRAILING_TOKENS_FOR_LEADING_STATUS) {
+    return false;
+  }
+
+  return tokenize(line.slice(0, index)).slice(-STATUS_WORDS_BEFORE).some(isStatusWord);
+};
+
+// PTY output carries CRLF line endings while the prompts keepitmovin injects use
+// LF, so a naive replaceAll would never strip them and the tool's own launch
+// prompt would stay in the scanned text. Since that prompt embeds the error type
+// verbatim (and "rate_limit" is itself a pattern), an echoing tool could
+// self-trigger an immediate re-switch. Normalize both sides before removing.
+const normalizeLineEndings = (text: string): string => text.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
 
 const stripIgnored = (text: string, ignore: Array<string | undefined>): string =>
   ignore
     .filter((value): value is string => Boolean(value))
-    .reduce((accumulated, value) => accumulated.replaceAll(value, ""), text);
+    .reduce(
+      (accumulated, value) => accumulated.replaceAll(normalizeLineEndings(value), ""),
+      normalizeLineEndings(text)
+    );
 
 // True when `line` contains `pattern` in a way that reads like a status/error
 // line — either the line leads with the pattern itself, or with a known error
@@ -104,9 +151,10 @@ const isStatusLikeLine = (
     }
   }
 
-  // A line with a limit pattern AND a status word (e.g. "usage limit reached")
-  // is a definitive status event, not prose discussion. Skipped in strict mode.
-  if (!options.strict && STATUS_WORDS.some((word) => trimmed.includes(word))) {
+  // A limit pattern with a status word right beside it (e.g. "usage limit
+  // reached") is a definitive status event, not prose discussion. Skipped in
+  // strict mode.
+  if (!options.strict && hasAdjacentStatusWord(trimmed, pattern)) {
     return true;
   }
 
@@ -130,13 +178,13 @@ export const detectLiveFailure = (
   for (const line of cleaned.split("\n")) {
     // Percentage "approaching your limit" warnings wrap across TUI rows, so the
     // figure can sit on the previous line while a limit pattern heads this one.
-    // Judge the warning shape on both lines together and skip the line if so —
-    // these are not limit-hit events (e.g. "You've used 92% of your session
-    // limit"), and a curated banner path must not fire on them either.
-    const context = previousLine === undefined ? line : `${previousLine} ${line}`;
+    // These are not limit-hit events (e.g. "You've used 92% of your session
+    // limit") and neither pattern layer may fire on them. A line carrying its own
+    // exhaustion word is exempt — see isSuppressedUsageWarning.
+    const suppressed = isSuppressedUsageWarning(line, previousLine);
     previousLine = line;
 
-    if (isUsageWarning(context)) {
+    if (suppressed) {
       continue;
     }
 

@@ -1299,3 +1299,78 @@ describe("runHarness", () => {
     expect(pty?.writes.some((write) => write.includes("Please update the keepitmovin handoff file"))).toBe(false);
   });
 });
+
+describe("runHarness — session lifecycle guards", () => {
+  const twoProviders = [
+    {
+      name: "claude",
+      label: "Claude Code",
+      enabled: true,
+      command: "fake-claude",
+      args: ["{{sessionPrompt}}"],
+      handoffArgs: ["{{handoffPrompt}}"],
+      integrationType: "pty" as const
+    },
+    {
+      name: "codex",
+      label: "Codex",
+      enabled: true,
+      command: "fake-codex",
+      args: ["{{sessionPrompt}}"],
+      handoffArgs: ["{{handoffPrompt}}"],
+      integrationType: "pty" as const
+    }
+  ];
+
+  it("stops after a bounded number of switches instead of ping-ponging forever", async () => {
+    // Both tools fail every time. With two providers the switch menu auto-picks
+    // the only other one, so before the budget this looped A -> B -> A forever.
+    const cwd = await makeTempDir();
+    const config = defaultConfig();
+    config.interactiveProviders = twoProviders;
+
+    const ptyFactory: PtyFactory = () =>
+      new FakePty({ data: "Error: rate limit exceeded\n", exitCode: 1 });
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      providers: twoProviders,
+      ptyFactory,
+      switchSelector: async (choices) => choices[0],
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.success).toBe(false);
+    // providers.length * 2 switches, so the initial attempt plus that many more.
+    expect(summary.attempts.length).toBe(twoProviders.length * 2 + 1);
+  });
+
+  it("treats Ctrl-C as ending the session, not as a reason to switch tools", async () => {
+    const cwd = await makeTempDir();
+    const config = defaultConfig();
+    config.interactiveProviders = twoProviders;
+
+    const ptyFactory: PtyFactory = () => {
+      const pty = new FakePty({ data: "working...", exitCode: 0, waitForKill: true });
+      // Fire the abort once the attempt is live and mirroring input.
+      setTimeout(() => process.emit("SIGINT"), 10);
+      return pty;
+    };
+
+    const summary = await runHarness({
+      cwd,
+      config,
+      providers: twoProviders,
+      ptyFactory,
+      switchSelector: async (choices) => choices[0],
+      output: new PassThrough() as NodeJS.WriteStream
+    });
+
+    expect(summary.aborted).toBe(true);
+    expect(summary.success).toBe(false);
+    expect(summary.attempts).toHaveLength(1);
+    expect(summary.attempts[0]?.errorType).toBe("aborted");
+    expect(summary.finalProvider).toBe("claude");
+  });
+});

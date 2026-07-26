@@ -63,6 +63,7 @@ export type AgentErrorType =
   | "timeout"
   | "command_not_found"
   | "manual_switch"
+  | "aborted"
   | "nonzero_exit"
   | "unknown";
 
@@ -142,6 +143,8 @@ export interface HarnessSessionLog {
   attempts: HarnessAttemptLog[];
   finalProvider?: ProviderName;
   success: boolean;
+  /** True when the user stopped the session with Ctrl-C / SIGTERM. */
+  aborted?: boolean;
   changedFiles: string[];
   sessionLogPath?: string;
   task?: string;

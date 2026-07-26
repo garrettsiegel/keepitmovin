@@ -25,6 +25,7 @@ export const agentErrorTypeSchema = z.enum([
   "timeout",
   "command_not_found",
   "manual_switch",
+  "aborted",
   "nonzero_exit",
   "unknown"
 ]);

@@ -201,15 +201,20 @@ const SWITCH_REASON_COPY: Partial<Record<AgentErrorType, string>> = {
   quota_exceeded: "ran out of quota",
   auth_error: "needs you to sign in again",
   timeout: "went quiet for too long",
-  manual_switch: "was switched out by you"
+  manual_switch: "was switched out by you",
+  aborted: "was stopped by you"
 };
+
+/** Plain-language phrasing for a switch reason, for any user-facing notice. */
+export const describeSwitchReason = (reason: AgentErrorType): string =>
+  SWITCH_REASON_COPY[reason] ?? "hit a snag";
 
 export const renderCommercialBreak = (
   fromLabel: string,
   toLabel: string,
   reason: AgentErrorType
 ): string => {
-  const situation = SWITCH_REASON_COPY[reason] ?? "hit a snag";
+  const situation = describeSwitchReason(reason);
 
   return [
     "",

@@ -18,6 +18,7 @@ import {
   type CliOptions
 } from "./cli-options.js";
 import { reasoningEffortSchema, routingTierSchema } from "./routing-config.js";
+import { installTerminalRestoreHook } from "./terminal-restore.js";
 import type { ReasoningEffort, RoutingTier } from "./types.js";
 
 const parseTier = (value: string): RoutingTier => {
@@ -157,5 +158,8 @@ mcp
   .command("remove")
   .description("Preview and remove only keepitmovin-owned MCP entries.")
   .action(async () => runMcpChangeCommand("remove"));
+
+// Last-resort guard so a crash never leaves the terminal in raw mode.
+installTerminalRestoreHook();
 
 await program.parseAsync(explicitTask.argv);

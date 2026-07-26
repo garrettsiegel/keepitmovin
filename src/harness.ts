@@ -72,8 +72,15 @@ export const runHarness = async (
   const attempts: HarnessAttemptLog[] = [];
   let handoffPrompt: string | undefined;
   let success = false;
+  let aborted = false;
   let finalProvider: string | undefined;
   let repeatedFailures = 0;
+  // Switching advances to whichever tool was chosen, with no memory of where it
+  // has already been. With two tools the menu auto-picks the only other one, so a
+  // persistent failure (both unauthenticated, or a bad detection) ping-ponged
+  // A -> B -> A forever. Cap the total switches instead of trusting the chain.
+  let switchCount = 0;
+  const maxSwitches = providers.length * 2;
 
   if (providers.length === 0) {
     throw new Error("No tools are turned on. Run `kim setup` or `kim providers`.");
@@ -150,6 +157,14 @@ export const runHarness = async (
       break;
     }
 
+    // Ctrl-C means the user wants out, not that this tool failed. Stop the whole
+    // session rather than handing off to the next one.
+    if (attempt.errorType === "aborted") {
+      finalProvider = provider.name;
+      aborted = true;
+      break;
+    }
+
     const choices = providers
       .map((candidate, candidateIndex) => ({ provider: candidate, index: candidateIndex }))
       .filter((choice) => choice.index !== index);
@@ -175,6 +190,18 @@ export const runHarness = async (
     });
 
     if (!selected) {
+      finalProvider = provider.name;
+      break;
+    }
+
+    switchCount += 1;
+    if (switchCount > maxSwitches) {
+      options.output?.write(
+        chalk.yellow(
+          `\nkeepitmovin switched tools ${maxSwitches} times without finishing, so it stopped to avoid looping.\n` +
+            `Your handoff file is up to date at ${handoffPath}.\n`
+        )
+      );
       finalProvider = provider.name;
       break;
     }
@@ -209,9 +236,11 @@ export const runHarness = async (
       [sessionPrompt, handoffPrompt]
     ),
     note: [
-      success
-        ? "The final provider process exited cleanly."
-        : "The session ended without a clean provider exit.",
+      aborted
+        ? "You stopped the session with Ctrl-C."
+        : success
+          ? "The final provider process exited cleanly."
+          : "The session ended without a clean provider exit.",
       options.routeDecision && options.config.routing.telemetry
         ? `Reported task outcome: ${outcome}.`
         : undefined
@@ -236,6 +265,7 @@ export const runHarness = async (
     attempts,
     finalProvider,
     success,
+    ...(aborted ? { aborted } : {}),
     changedFiles: await getChangedFiles(options.cwd),
     ...(options.task ? { task: options.task } : {}),
     ...(options.routeDecision && options.config.routing.telemetry

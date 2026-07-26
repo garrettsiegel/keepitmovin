@@ -34,6 +34,11 @@
   "author": "Garrett Siegel",
   "type": "module",
   "packageManager": "pnpm@10.23.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "node-pty"
+    ]
+  },
   "engines": {
     "node": ">=20"
   },
@@ -45,12 +50,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
     "dist",
+    "src",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE"
   ],

@@ -16,9 +16,10 @@ const loadNodePty = (): NodePtyModule =>
 
 export interface PtyProcess {
   onData(listener: (data: string) => void): void;
-  onExit(listener: (event: { exitCode: number; signal?: number }) => void): void;
+  // `signal` is a number under node-pty and a name under the pipe fallback.
+  onExit(listener: (event: { exitCode: number; signal?: number | NodeJS.Signals }) => void): void;
   write(data: string): void;
-  kill(signal?: string): void;
+  kill(signal?: NodeJS.Signals): void;
   resize?(cols: number, rows: number): void;
 }
 
@@ -35,17 +36,25 @@ export type PtyFactory = (
 
 class ChildProcessPtyAdapter implements PtyProcess {
   readonly #child: ChildProcessWithoutNullStreams;
-  #exitListeners: Array<(event: { exitCode: number; signal?: number }) => void> = [];
+  #exitListeners: Array<(event: { exitCode: number; signal?: number | NodeJS.Signals }) => void> = [];
   #exited = false;
 
   constructor(child: ChildProcessWithoutNullStreams) {
     this.#child = child;
-    this.#child.on("exit", (exitCode) => {
-      this.#emitExit(exitCode ?? 1);
+    // "close" (not "exit") fires only after stdout/stderr have fully drained.
+    // On "exit" the final chunks — often the limit banner itself — can still be
+    // in flight, so the attempt would resolve before detection ever saw them.
+    this.#child.on("close", (exitCode, signal) => {
+      // A signal-killed child reports exitCode null. Mapping that to 1 invented a
+      // `nonzero_exit` failure (and a spurious switch) out of a clean kill.
+      this.#emitExit(exitCode ?? 0, signal ?? undefined);
     });
     this.#child.on("error", () => {
       this.#emitExit(127);
     });
+    // Writes racing a dying child (idle nudge, compaction nudge, bootstrap paste)
+    // emit an async EPIPE on stdin; without a listener that is an uncaught throw.
+    this.#child.stdin.on("error", () => {});
   }
 
   onData(listener: (data: string) => void): void {
@@ -53,29 +62,33 @@ class ChildProcessPtyAdapter implements PtyProcess {
     this.#child.stderr.on("data", (data: Buffer) => listener(data.toString("utf8")));
   }
 
-  onExit(listener: (event: { exitCode: number; signal?: number }) => void): void {
+  onExit(listener: (event: { exitCode: number; signal?: number | NodeJS.Signals }) => void): void {
     this.#exitListeners.push(listener);
   }
 
   write(data: string): void {
+    if (this.#exited || !this.#child.stdin.writable) {
+      return;
+    }
+
     this.#child.stdin.write(data);
   }
 
-  kill(signal?: string): void {
-    this.#child.kill(signal as NodeJS.Signals | undefined);
+  kill(signal?: NodeJS.Signals): void {
+    this.#child.kill(signal);
   }
 
   // No-op: a piped child process has no TTY to resize. Kept so the pipe
   // fallback still satisfies the PtyProcess contract.
   resize(): void {}
 
-  #emitExit(exitCode: number): void {
+  #emitExit(exitCode: number, signal?: NodeJS.Signals): void {
     if (this.#exited) {
       return;
     }
 
     this.#exited = true;
-    this.#exitListeners.forEach((listener) => listener({ exitCode }));
+    this.#exitListeners.forEach((listener) => listener({ exitCode, signal }));
   }
 }
 

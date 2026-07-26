@@ -280,4 +280,58 @@ describe("detectLiveFailure — percentage usage warnings are not limits", () =>
     ].join("\n");
     expect(detectLiveFailure(`${tail}\n`, provider, config, [])).toBe("rate_limit");
   });
+
+  it("switches on a real banner sitting directly under the context-percentage footer", () => {
+    // Regression: the previous-line fold treated the footer's "23% … left" as a
+    // usage warning and vetoed the NEXT line, silently swallowing a real banner.
+    const tail = [
+      "Context left until auto-compact: 23%",
+      "Claude usage limit reached."
+    ].join("\n");
+    expect(detectLiveFailure(`${tail}\n`, provider, config, [])).toBe("rate_limit");
+  });
+
+  it("switches on a real banner that quotes its own usage percentage", () => {
+    expect(
+      detectLiveFailure("Error: Rate limit reached - 87% of quota consumed\n", provider, config, [])
+    ).toBe("rate_limit");
+  });
+});
+
+describe("detectLiveFailure — status words must sit beside the pattern", () => {
+  const config = defaultConfig();
+  const provider = makeProvider();
+
+  // Each of these tripped a mid-session handoff before status words were matched
+  // by token adjacency instead of bare substring.
+  it.each([
+    "if we hit the rate limit we should back off and retry",
+    "i detected a 429 handler in the retry code",
+    "normalize whitespace before checking the rate limit string",
+    "the retry helper triggered twice, so let's cap the rate limit backoff"
+  ])("does not switch on agent prose %j", (line) => {
+    expect(detectLiveFailure(`${line}\n`, provider, config, [])).toBeUndefined();
+  });
+
+  it.each([
+    "Claude usage limit reached.",
+    "Error: exceeded rate limit for this model"
+  ])("still switches on the real status line %j", (line) => {
+    expect(detectLiveFailure(`${line}\n`, provider, config, [])).toBe("rate_limit");
+  });
+});
+
+describe("detectLiveFailure — injected prompts are stripped from CRLF output", () => {
+  const config = defaultConfig();
+  const provider = makeProvider();
+
+  it("does not switch when the tool echoes a handoff prompt naming the error type", () => {
+    // PTY output is CRLF; the prompt keepitmovin injects is LF. Before
+    // normalization the prompt was never stripped, and because it embeds the
+    // error type verbatim ("rate_limit" is itself a pattern) an echoing tool
+    // could force an immediate re-switch off its own argv.
+    const prompt = "Continue the task.\nPrevious tool stopped with: rate_limit reached\n";
+    const echoed = prompt.replaceAll("\n", "\r\n");
+    expect(detectLiveFailure(echoed, provider, config, [prompt])).toBeUndefined();
+  });
 });

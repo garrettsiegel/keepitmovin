@@ -11,6 +11,10 @@ import { formatUsageProbeMessage, resolveUsageProbe, type UsageProbeOptions } fr
 import type { CompactionProbeOptions } from "./compaction-probe.js";
 import { createHarnessObservers } from "./harness-observers.js";
 import { startHarnessAttempt } from "./harness-attempt.js";
+import { describeSwitchReason } from "./terminal-ui.js";
+
+// Grace period between SIGTERM and SIGKILL for a child that ignores the former.
+const KILL_ESCALATION_MS = 5_000;
 /** Run one provider in a PTY until exit, manual switch, idle timeout, or limit. */
 export const waitForProvider = async (
   provider: InteractiveProviderConfig,
@@ -66,7 +70,9 @@ export const waitForProvider = async (
     output
   });
 
-  const ignoreTexts = [handoffPrompt, sessionPrompt];
+  // Paste-transport tools echo the bootstrap text back, so it has to be stripped
+  // alongside the argv-delivered prompts before the transcript is scanned.
+  const ignoreTexts = [handoffPrompt, sessionPrompt, launch.bootstrapInput];
   const idleTimeoutMs = config.harness.idleTimeoutMs;
   let idleTimer: NodeJS.Timeout | undefined;
   let cleaned = false;
@@ -78,7 +84,7 @@ export const waitForProvider = async (
     output?.write(
       chalk.yellow(`\n\nkeepitmovin saw no activity from ${provider.label} for ${idleTimeoutMs}ms. Pausing this tool...\n`)
     );
-    child.kill();
+    killChild();
   };
 
   const armIdleTimer = (): void => {
@@ -107,7 +113,7 @@ export const waitForProvider = async (
       errorDetail = formatUsageProbeMessage(provider.label, snapshot, resolvedProbe.thresholdPercent);
       settled = true;
       output?.write(chalk.yellow(`\n\n${errorDetail} Pausing this tool...\n`));
-      child.kill();
+      killChild();
     },
     onUsageSample: observers.observeUsage,
     startedAt,
@@ -115,11 +121,37 @@ export const waitForProvider = async (
     onCompaction: observers.observeCompaction
   });
 
-  const onResize = (): void => child.resize?.(process.stdout.columns || 80, process.stdout.rows || 24);
+  // node-pty throws if the pty is already gone, and `output` may be an injected
+  // stream rather than process.stdout.
+  const onResize = (): void => {
+    try {
+      child.resize?.(output?.columns || process.stdout.columns || 80, output?.rows || process.stdout.rows || 24);
+    } catch {
+      // The child exited between the resize event and this call — nothing to do.
+    }
+  };
 
-  const onAbort = (): void => {
-    cleanup();
+  // A tool that traps SIGTERM to run its own shutdown prompt may never exit, which
+  // would leave the attempt promise pending forever and wedge keepitmovin. Escalate.
+  let killEscalation: NodeJS.Timeout | undefined;
+  const killChild = (): void => {
     child.kill();
+    if (killEscalation) clearTimeout(killEscalation);
+    killEscalation = setTimeout(() => child.kill("SIGKILL"), KILL_ESCALATION_MS);
+    killEscalation.unref?.();
+  };
+
+  // Ctrl-C / SIGTERM. Registering a listener suppresses Node's default
+  // termination, so without recording the abort the child's kill read back as a
+  // clean exit and keepitmovin went on to write checkpoints and a "success"
+  // session log instead of stopping.
+  const onAbort = (): void => {
+    if (!settled) {
+      settled = true;
+      detectedError = "aborted";
+    }
+    cleanup();
+    killChild();
   };
 
   let bootstrap: ReturnType<typeof createBootstrapWriter> | undefined;
@@ -137,11 +169,15 @@ export const waitForProvider = async (
     if (cleaned) return;
     cleaned = true;
     if (idleTimer) clearTimeout(idleTimer);
+    if (killEscalation) clearTimeout(killEscalation);
     bootstrap?.cancel();
     observers.stop();
     stopWatchers();
     input?.off("data", onInput);
     input?.setRawMode?.(false);
+    // stdin was resumed to mirror keystrokes; leaving it flowing and ref'd keeps
+    // the event loop alive, so `kim` would hang instead of exiting.
+    if (resumedInput) input?.pause();
     output?.off?.("resize", onResize);
     process.off("SIGINT", onAbort);
     process.off("SIGTERM", onAbort);
@@ -156,7 +192,7 @@ export const waitForProvider = async (
       detectedError = "manual_switch";
       settled = true;
       output?.write(chalk.yellow("\n\nkeepitmovin manual switch requested. Pausing this tool...\n"));
-      child.kill();
+      killChild();
       return;
     }
 
@@ -168,8 +204,9 @@ export const waitForProvider = async (
     child.write(chunk.toString());
   }
 
+  const resumedInput = input !== undefined && input.isPaused?.() !== false;
   input?.setRawMode?.(true);
-  input?.resume();
+  if (resumedInput) input?.resume();
   input?.on("data", onInput);
   output?.on?.("resize", onResize);
   process.once("SIGINT", onAbort);
@@ -205,9 +242,9 @@ export const waitForProvider = async (
         if (detectedError && !settled) {
           settled = true;
           output?.write(
-            chalk.yellow(`\n\n${provider.label} looks blocked (${detectedError}).\n`)
+            chalk.yellow(`\n\n${provider.label} looks blocked (${describeSwitchReason(detectedError)}).\n`)
           );
-          child.kill();
+          killChild();
         }
       }
     });

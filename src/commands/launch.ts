@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { restoreTerminal } from "../terminal-restore.js";
 import { cancel, isCancel, select } from "@clack/prompts";
 import { loadConfig } from "../config.js";
 import { runHarness } from "../harness.js";
@@ -112,7 +113,7 @@ export const runLaunchCommand = async (options: CliOptions): Promise<void> => {
 
     console.log(renderHarnessStart(launchableProviders));
 
-    await runHarness({
+    const summary = await runHarness({
       cwd,
       config,
       providers: launchableProviders,
@@ -128,7 +129,14 @@ export const runLaunchCommand = async (options: CliOptions): Promise<void> => {
           }
         : undefined
     });
+
+    if (summary.aborted) {
+      process.exitCode = 130;
+    }
   } catch (error) {
+    // A throw from the harness tail (handoff/archive/session-log writes) can leave
+    // the terminal in raw mode with a dead echo, so restore it before reporting.
+    restoreTerminal();
     console.error(chalk.red(error instanceof Error ? error.message : String(error)));
     process.exitCode = 1;
   }

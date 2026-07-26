@@ -64,6 +64,14 @@ const USAGE_PERCENT = /\b[1-9]\d?(?:\.\d+)?\s*%/;
 export const isUsageWarning = (context: string): boolean => {
   const lower = context.toLowerCase();
 
+  // An exhaustion word means the limit was actually HIT, whatever percentage the
+  // line also quotes. Without this, a real banner that reports its own usage
+  // ("Rate limit reached — 87% of quota consumed") was dismissed as a warning
+  // and keepitmovin never switched.
+  if (LIMIT_HIT_TOKEN.test(lower)) {
+    return false;
+  }
+
   if (/\bapproaching\b[^.]*\blimit\b/.test(lower)) {
     return true;
   }
@@ -83,6 +91,38 @@ export const isUsageWarning = (context: string): boolean => {
   );
 };
 
+/**
+ * Words that mean a limit was actually hit rather than approached. A line
+ * carrying one of these is never suppressed as a usage warning.
+ */
+const LIMIT_HIT_TOKEN =
+  /\b(?:reached|exceeded|blocked|throttled|out of credits|no quota|quota_exceeded)\b/;
+
+export const carriesLimitHit = (line: string): boolean => LIMIT_HIT_TOKEN.test(line.toLowerCase());
+
+/**
+ * Whether `line` should be skipped as an "approaching your limit" notice.
+ *
+ * TUIs wrap one logical row across several real lines, so the percentage and the
+ * word "limit" can land separately — the previous line is folded in as context to
+ * catch that. But the folded context must never *veto an unrelated line*: Claude
+ * Code renders "Context left until auto-compact: 23%" directly above its status
+ * output, which silently suppressed a genuine "usage limit reached" banner on the
+ * following line. So a line that carries an exhaustion word of its own is always
+ * judged on its own merits.
+ */
+export const isSuppressedUsageWarning = (line: string, previousLine?: string): boolean => {
+  if (isUsageWarning(line)) {
+    return true;
+  }
+
+  if (previousLine === undefined || carriesLimitHit(line)) {
+    return false;
+  }
+
+  return isUsageWarning(`${previousLine} ${line}`);
+};
+
 // Remove lines that read as usage-percentage warnings before pattern matching,
 // so an "approaching your limit" notice on screen at exit isn't classified as a
 // real limit. The previous line is folded into each line's context because TUIs
@@ -90,10 +130,7 @@ export const isUsageWarning = (context: string): boolean => {
 const stripUsageWarnings = (text: string): string => {
   const lines = text.split("\n");
   return lines
-    .filter((line, index) => {
-      const context = index > 0 ? `${lines[index - 1]} ${line}` : line;
-      return !isUsageWarning(context);
-    })
+    .filter((line, index) => !isSuppressedUsageWarning(line, index > 0 ? lines[index - 1] : undefined))
     .join("\n");
 };
 
