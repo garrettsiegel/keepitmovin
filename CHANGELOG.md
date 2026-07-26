@@ -77,6 +77,9 @@ All notable changes to keepitmovin are documented here. The format is based on
 - `src/` is grouped into 13 domain folders (harness, providers, handoff, config, routing, mcp,
   setup, detection, probes, pty, session, ui, util) instead of 61 flat files distinguished by
   filename prefix. Internal only — the public entry points are unchanged.
+- Builds with TypeScript 7 (the Go-native compiler): a full build drops from ~2.5s to ~0.3s.
+  `@types/node` is pinned to ^22 to match the supported runtime, so typecheck cannot green-light a
+  Node API that is missing on the version users actually run.
 - Releases publish from CI on a tag push using npm trusted publishing (OIDC), with provenance and
   no stored npm token. `pnpm release` now tags and pushes; it no longer publishes directly.
 - `exports` lists `types` before `import`, as condition order requires.
