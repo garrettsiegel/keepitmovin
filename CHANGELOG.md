@@ -49,6 +49,8 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 ### Security
 
+- Pins `fast-uri` to `>=3.1.4` via a pnpm override, clearing a high-severity host-confusion
+  advisory (GHSA-v2hh-gcrm-f6hx) reached through `@modelcontextprotocol/sdk > ajv`.
 - MCP path containment resolves symlinks, so a handoff path pointing outside the project root
   through a symlinked directory is rejected rather than streamed to connected clients.
 - Handoff files, session logs and the trust store are written `0600` in `0700` directories.
