@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
+import { defaultConfig } from "../src/config/index.js";
 import {
   checkUsageThreshold,
   formatUsageProbeMessage,
@@ -7,8 +7,8 @@ import {
   resolveUsageProbe,
   startUsageProbe,
   type UsageSnapshot
-} from "../src/usage-probe.js";
-import type { InteractiveProviderConfig } from "../src/types.js";
+} from "../src/probes/usage.js";
+import type { InteractiveProviderConfig } from "../src/config/types.js";
 import { makeTempDir } from "./support/tmp.js";
 import { rateLimitLine, writeRollout } from "./support/codex-rollout.js";
 

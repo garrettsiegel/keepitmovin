@@ -1,19 +1,19 @@
 import path from "node:path";
 import process from "node:process";
-import { DEFAULT_CONFIG_FILE, loadConfig } from "./config.js";
-import { getGitSnapshot } from "./git.js";
-import { assertConfigTrusted } from "./trust.js";
-import { getProviderCatalog } from "./provider-catalog.js";
+import { DEFAULT_CONFIG_FILE, loadConfig } from "./config/index.js";
+import { getGitSnapshot } from "./util/git.js";
+import { assertConfigTrusted } from "./config/trust.js";
+import { getProviderCatalog } from "./providers/catalog.js";
 import {
   catalogHealthInput,
   checkProviderCommand,
   interactiveHealthInput,
   type ProviderHealth
-} from "./provider-health.js";
-import { readProviderUsage, resolveUsageProbe, type UsageSnapshot } from "./usage-probe.js";
-import type { KeepitmovinConfig } from "./types.js";
+} from "./providers/health.js";
+import { readProviderUsage, resolveUsageProbe, type UsageSnapshot } from "./probes/usage.js";
+import type { KeepitmovinConfig } from "./config/types.js";
 
-export type { ProviderHealth } from "./provider-health.js";
+export type { ProviderHealth } from "./providers/health.js";
 
 export interface UsageProbeStatus {
   name: string;

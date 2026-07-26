@@ -1,16 +1,16 @@
 import chalk from "chalk";
-import { restoreTerminal } from "../terminal-restore.js";
+import { restoreTerminal } from "../ui/restore.js";
 import { cancel, isCancel, select } from "@clack/prompts";
-import { loadConfig } from "../config.js";
-import { runHarness } from "../harness.js";
-import { describeProviderChain, getEnabledInteractiveProviders } from "../interactive-provider.js";
-import { getSetupState, runSetupWizard } from "../setup.js";
-import { resolveRouteForLaunch, resolveTaskForLaunch } from "../launch-routing.js";
-import { renderHarnessStart } from "../terminal-ui.js";
-import { assertConfigTrusted } from "../trust.js";
-import { ensureProviderFreshness } from "../updates.js";
+import { loadConfig } from "../config/index.js";
+import { runHarness } from "../harness/index.js";
+import { describeProviderChain, getEnabledInteractiveProviders } from "../providers/interactive.js";
+import { getSetupState, runSetupWizard } from "../setup/index.js";
+import { resolveRouteForLaunch, resolveTaskForLaunch } from "../routing/launch.js";
+import { renderHarnessStart } from "../ui/terminal.js";
+import { assertConfigTrusted } from "../config/trust.js";
+import { ensureProviderFreshness } from "../setup/updates.js";
 import type { CliOptions } from "../cli-options.js";
-import type { KeepitmovinConfig } from "../types.js";
+import type { KeepitmovinConfig } from "../config/types.js";
 
 // On `kim`, decide which config to launch with. First run → wizard. Otherwise
 // confirm the saved chain (reuse / reconfigure / start fresh). Non-interactive

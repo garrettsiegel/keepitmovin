@@ -9,7 +9,7 @@ import {
   getChangedFiles,
   getGitContext,
   isGitRepo
-} from "../src/git.js";
+} from "../src/util/git.js";
 
 
 describe("git helpers", () => {

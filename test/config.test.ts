@@ -1,7 +1,7 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { keepitmovinConfigSchema, defaultConfig, initConfig, loadConfig } from "../src/config.js";
+import { keepitmovinConfigSchema, defaultConfig, initConfig, loadConfig } from "../src/config/index.js";
 import { makeTempDir } from "./support/tmp.js";
 
 const makeRealTempDir = async (): Promise<string> => makeTempDir("kim-config");

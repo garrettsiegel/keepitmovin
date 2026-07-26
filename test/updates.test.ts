@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
-import { ensureProviderFreshness, type UpdateCommandRunner } from "../src/updates.js";
+import { defaultConfig } from "../src/config/index.js";
+import { ensureProviderFreshness, type UpdateCommandRunner } from "../src/setup/updates.js";
 
 describe("ensureProviderFreshness", () => {
   it("runs verified native updater commands in always mode", async () => {

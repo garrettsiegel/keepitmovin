@@ -39,33 +39,31 @@ Before finishing any task: `build`, `test`, and `lint` must all pass.
 
 ## Architecture
 
-keepitmovin has a single execution mode — the interactive harness (`src/harness.ts`, the `kim`
+keepitmovin has a single execution mode — the interactive harness (`src/harness/`, the `kim`
 experience). It spawns a provider in a PTY (`node-pty`, with a piped-`child_process` fallback),
 mirrors stdin/stdout, keeps a `RollingTranscript`, watches live output for failures, and hands off
-on failure or `Ctrl+]`. `runHarness` (the orchestration loop) is split across three modules:
+on failure or `Ctrl+]`.
 
-| Module | Role |
+`src/` is grouped by domain. Each folder is self-contained; the only files at the root are the CLI
+entry points and the public barrel.
+
+| Folder | Role |
 |---|---|
-| `src/harness.ts` | `runHarness` — the provider loop, handoff/checkpoint calls, commercial-break interstitial, session logging. |
-| `src/harness-session.ts` | `waitForProvider` — spawns one provider attempt, mirrors I/O, idle timeout, manual-switch key, cleanup. |
-| `src/failure-detection.ts` | Live/post-exit failure classification (`detectLiveFailure`/`detectExitFailure`), the prose-vs-status-line guard, manual-switch key mapping. |
-| `src/pty-factory.ts` | PTY process adapter + node-pty/pipe-fallback factories. |
-
-Other supporting modules:
-
-| Module | Role |
-|---|---|
-| `src/config.ts` | Zod schema (`keepitmovinConfigSchema`) — the config contract + defaults. All config shape changes go here. |
-| `src/provider-catalog.ts`, `src/provider-catalog-data.ts`, `src/provider-catalog-more.ts`, `src/provider-catalog-extra.ts`, `src/provider-catalog-types.ts` | **Single source of truth** for every known tool (commands, args, integration type, install/auth notes, `limitPatterns`). The nine fully-supported tools live in `-data.ts` (part 1 + the `PROVIDER_CATALOG` assembler) and `-more.ts` (part 2), split only to stay under 250 LOC; catalog order across the two drives the default fallback chain. Hidden tools (`supportLevel: "hidden"`) live in `-extra.ts` — kept in the catalog so existing configs keep launching, but excluded from defaults, the setup wizard, and docs (see `isHiddenCatalogEntry`/`isHiddenProviderName`). Do not scatter provider details across other files. |
-| `src/errors.ts` | Error taxonomy + generic pattern matching (`classifyError`, `matchLimitPattern`, `matchProviderLimitPattern`). |
-| `src/handoff-file.ts` | Builds and maintains the `.keepitmovin/current/handoff.md` continuity artifact and its prompts. |
-| `src/handoff-refresh.ts`, `src/handoff-quality.ts` | Refresh mechanical handoff sections and measure whether the task/narrative was actually recorded. |
-| `src/routing.ts`, `src/model-routing.ts`, `src/launch-routing.ts` | Deterministic task classification, local Codex model discovery, and launch-time routing/overrides. |
-| `src/session-log.ts`, `src/session-outcome.ts` | Persist validated session telemetry and collect the one-time routed-task outcome. |
-| `src/doctor.ts`, `src/provider-health.ts` | `kim doctor` — provider health checks. |
-| `src/setup.ts`, `src/setup-prompts.ts`, `src/tool-status.ts` | The guided setup wizard: orchestration, clack prompt helpers, tool-availability detection. |
-| `src/updates.ts`, `src/update-runner.ts` | Tool self-update: orchestration + spinner UI, then the runner primitives. |
-| `src/cli.ts`, `src/cli-options.ts`, `src/commands/*.ts` | `commander` command wiring; each command's logic lives in its own `src/commands/<name>.ts`. |
+| `src/harness/` | The orchestration loop. `index.ts` = `runHarness` (provider loop, checkpoints, commercial-break interstitial); `session.ts` = `waitForProvider` (one provider attempt); `io.ts` (stdin/stdout/signal wiring), `attempt.ts` + `attempt-log.ts`, `observers.ts`, `watchers.ts`, `finalize.ts`, plus `transcript.ts`, `bootstrap-input.ts`, `switch-menu.ts` and the `watchdog*.ts` signals. |
+| `src/detection/` | `failure-detection.ts` (live/post-exit classification, the prose-vs-status-line guard, manual-switch key mapping) and `errors.ts` (error taxonomy + generic pattern matching). |
+| `src/providers/` | **Single source of truth** for every known tool. `catalog.ts` is the public API; `catalog-entries.ts` holds the `PROVIDER_CATALOG` assembler plus the first five supported tools, `catalog-entries-continued.ts` the other four (split only to stay under 250 LOC — catalog order across the two drives the default fallback chain). Hidden tools (`supportLevel: "hidden"`) live in `catalog-hidden.ts`: kept so existing configs keep launching, but excluded from defaults, the setup wizard and docs (see `isHiddenCatalogEntry`/`isHiddenProviderName`). Also `interactive.ts`, `health.ts`, `tool-status.ts`. Do not scatter provider details elsewhere. |
+| `src/config/` | `index.ts` (load/save/normalize), `config-schema.ts` (the zod contract + defaults — all config shape changes go here), `types.ts` (inferred from the schema), `trust.ts`. |
+| `src/handoff/` | `file.ts` builds and maintains the `.keepitmovin/current/handoff.md` continuity artifact; `refresh.ts` and `quality.ts` refresh mechanical sections and measure whether the task/narrative was recorded; plus `receipt.ts`, `artifacts.ts`, `prompts.ts`. |
+| `src/probes/` | `usage.ts` and `compaction.ts` — reading a tool's own on-disk usage/compaction state. |
+| `src/routing/` | `classify.ts` (deterministic task classification), `model.ts` (local Codex model discovery), `launch.ts` (launch-time routing/overrides), `config.ts`. |
+| `src/mcp/` | `server.ts`, `data.ts`, `clients.ts`, `installer.ts` — the read-only MCP server and its installers. |
+| `src/setup/` | The guided setup wizard (`index.ts`, `prompts.ts`) and tool self-update (`updates.ts`, `update-runner.ts`). |
+| `src/pty/` | `factory.ts` (PTY process adapter + node-pty/pipe-fallback factories) and `helper.ts`. |
+| `src/session/` | `log.ts` and `outcome.ts` — persist validated session telemetry, collect the routed-task outcome. |
+| `src/ui/` | `terminal.ts` (boxes, status views, switch copy) and `restore.ts` (raw-mode/cursor recovery). |
+| `src/util/` | `paths.ts`, `redact.ts`, `git.ts`, `artifacts.ts`. |
+| `src/commands/` | One file per CLI command; `src/cli.ts` + `src/cli-options.ts` do the `commander` wiring. |
+| `src/doctor.ts` | `kim doctor` — provider health checks (pairs with `providers/health.ts`). |
 | `src/index.ts` | The public export surface (barrel) — keep exports intentional. |
 
 ## Beyond `src/`
@@ -78,12 +76,12 @@ Other supporting modules:
 
 ## Conventions
 
-- ESM throughout: import with explicit `.js` specifiers (e.g. `from "./config.js"`), TypeScript
+- ESM throughout: import with explicit `.js` specifiers (e.g. `from "./config/index.js"`), TypeScript
   `module`/`moduleResolution` NodeNext.
-- The zod schema in `config.ts` is the contract; `types.ts` mirrors it (`KeepitmovinConfig = z.infer<…>`).
-- To add/modify a provider, edit the `PROVIDER_CATALOG` entry in `provider-catalog-data.ts`; defaults
+- The zod schema in `config/config-schema.ts` is the contract; `config/types.ts` mirrors it (`KeepitmovinConfig = z.infer<…>`).
+- To add/modify a provider, edit the `PROVIDER_CATALOG` entry in `providers/catalog-entries.ts`; defaults
   flow out through `getDefaultInteractiveProviders` / `mergeCatalogInteractiveProviders`
-  (`provider-catalog.ts`).
+  (`providers/catalog.ts`).
 - Files stay ≤250 LOC — split by extracting a focused module (see the harness/setup/updates/doctor
   splits above) rather than letting one file grow.
 - Artifacts live under `.keepitmovin/` (handoffs, sessions).
@@ -91,16 +89,16 @@ Other supporting modules:
 ## Gotchas
 
 - **Harness failure detection scans live provider output.** `detectLiveFailure` in
-  `failure-detection.ts` classifies the transcript while the tool streams (called from the PTY
-  loop in `harness-session.ts`). Broad substring patterns can false-positive on an
+  `detection/failure-detection.ts` classifies the transcript while the tool streams (called from the PTY
+  loop in `harness/session.ts`). Broad substring patterns can false-positive on an
   agent that merely *discusses* a rate limit. Detection has two layers: the generic families in
-  `errors.ts` (`matchLimitPattern`), trusted only on a *status-like line* (prose guard), and a
-  provider's curated `limitPatterns` (defined per-tool in `provider-catalog-data.ts`, matched via
-  `matchProviderLimitPattern` in `errors.ts`), which are exact tool banners. Both layers require a
+  `detection/errors.ts` (`matchLimitPattern`), trusted only on a *status-like line* (prose guard), and a
+  provider's curated `limitPatterns` (defined per-tool in `providers/catalog-entries.ts`, matched via
+  `matchProviderLimitPattern` in `detection/errors.ts`), which are exact tool banners. Both layers require a
   status-like line before switching — provider banners use the *strict* variant of
   `isStatusLikeLine` (the banner must head its line or follow an error indicator), so a banner
   quoted in an agent's prose won't force a handoff. Keep banners specific anyway. A third guard,
-  `isUsageWarning` in `errors.ts`, drops any line that reads as an "approaching your limit"
+  `isUsageWarning` in `detection/errors.ts`, drops any line that reads as an "approaching your limit"
   percentage notice (a 1–99% figure tied to a limit, e.g. Claude Code's *"You've used 92% of your
   session limit"*) before the pattern layers run — such warnings are **not** limit-hit events.
   Because ink TUIs wrap a row into multiple real lines, the check folds in the *previous* line as
@@ -123,7 +121,7 @@ Other supporting modules:
   `dist/.prerender/chunks/`, so a path relative to the module resolves to
   `site/CHANGELOG.md` and the build dies with ENOENT. Keep it cwd-relative.
 - **PTY vs. pipe fallback.** When `node-pty` can't load, the harness falls back to a piped
-  `child_process` (`pty-factory.ts`) that lacks TTY semantics (no resize, degraded interactivity).
+  `child_process` (`pty/factory.ts`) that lacks TTY semantics (no resize, degraded interactivity).
   Guard PTY-only calls (e.g. `resize`) for the fallback.
 - **Prompt transport.** Claude, Codex, Antigravity, opencode, Grok Build, Cursor Agent (and hidden
   Cline, Factory Droid) receive the initial or handoff prompt as launch arguments. Kimi CLI, GitHub

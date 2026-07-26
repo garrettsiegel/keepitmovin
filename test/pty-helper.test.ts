@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { addExecutableBits } from "../src/pty-helper.js";
+import { addExecutableBits } from "../src/pty/helper.js";
 
 // This helper is synchronous (it exercises the sync exec-bit path), so it can't
 // use the shared async makeTempDir — it cleans up its own directories instead.

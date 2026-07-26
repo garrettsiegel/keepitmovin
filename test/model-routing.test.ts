@@ -1,13 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
+import { defaultConfig } from "../src/config/index.js";
 import {
   applyRouteToLaunch,
   readCodexModels,
   resolveProviderRoute
-} from "../src/model-routing.js";
-import { classifyTask } from "../src/routing.js";
+} from "../src/routing/model.js";
+import { classifyTask } from "../src/routing/classify.js";
 import { makeTempDir } from "./support/tmp.js";
 
 const makeCodexHome = async (

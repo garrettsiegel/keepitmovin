@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { confirm, isCancel } from "@clack/prompts";
-import { loadConfig } from "../config.js";
-import { clearHandoffArtifacts } from "../handoff-file.js";
+import { loadConfig } from "../config/index.js";
+import { clearHandoffArtifacts } from "../handoff/file.js";
 import type { CliOptions } from "../cli-options.js";
 
 export const runClearCommand = async (

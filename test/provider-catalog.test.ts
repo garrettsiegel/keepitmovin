@@ -7,8 +7,8 @@ import {
   getProviderCatalog,
   isHarnessControllable,
   mergeCatalogInteractiveProviders
-} from "../src/provider-catalog.js";
-import type { InteractiveProviderConfig } from "../src/types.js";
+} from "../src/providers/catalog.js";
+import type { InteractiveProviderConfig } from "../src/config/types.js";
 
 describe("provider catalog", () => {
   it("contains the V1 provider set: terminal harness tools plus guided OpenRouter", () => {

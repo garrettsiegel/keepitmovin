@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { defaultConfig, keepitmovinConfigSchema } from "../src/config.js";
+import { defaultConfig, keepitmovinConfigSchema } from "../src/config/index.js";
 
 const repoRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const examplePath = path.join(repoRoot, "keepitmovin.config.example.json");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyError, isUsageWarning, matchProviderLimitPattern } from "../src/errors.js";
+import { classifyError, isUsageWarning, matchProviderLimitPattern } from "../src/detection/errors.js";
 
 describe("isUsageWarning", () => {
   it("flags the exact 92% session-limit warning", () => {

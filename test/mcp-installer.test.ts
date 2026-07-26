@@ -1,8 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { getMcpClientStatuses, type McpCommandRunner } from "../src/mcp-clients.js";
-import { changeMcpInstallations } from "../src/mcp-installer.js";
+import { getMcpClientStatuses, type McpCommandRunner } from "../src/mcp/clients.js";
+import { changeMcpInstallations } from "../src/mcp/installer.js";
 import { makeTempDir } from "./support/tmp.js";
 
 const tempHome = async (): Promise<string> => {

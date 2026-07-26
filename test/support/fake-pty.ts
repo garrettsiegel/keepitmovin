@@ -1,4 +1,4 @@
-import type { PtyProcess } from "../../src/harness.js";
+import type { PtyProcess } from "../../src/harness/index.js";
 
 // Shared scripted PTY double. Previously duplicated inside test/harness.test.ts.
 

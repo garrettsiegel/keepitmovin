@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { isSafeToRecursivelyDelete, isStrictlyInside, resolveFromCwd } from "../src/paths.js";
+import { isSafeToRecursivelyDelete, isStrictlyInside, resolveFromCwd } from "../src/util/paths.js";
 
 // isSafeToRecursivelyDelete is the only thing standing between a mis-set
 // handoffPath and `rm(dir, { recursive: true, force: true })` in

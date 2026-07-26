@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RollingTranscript } from "../src/transcript.js";
+import { RollingTranscript } from "../src/harness/transcript.js";
 
 describe("RollingTranscript", () => {
   it("strips ANSI codes and keeps the newest content inside the limit", () => {

@@ -1,7 +1,7 @@
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
+import { defaultConfig } from "../src/config/index.js";
 import { makeTempDir } from "./support/tmp.js";
 import {
   appendHandoffCheckpoint,
@@ -12,7 +12,7 @@ import {
   createHandoffFile,
   getHandoffPaths,
   summarizeHandoffFile
-} from "../src/handoff-file.js";
+} from "../src/handoff/file.js";
 
 
 describe("handoff file helpers", () => {

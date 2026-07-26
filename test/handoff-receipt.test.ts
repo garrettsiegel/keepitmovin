@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createHandoffReceiptTracker,
   parseHandoffReceiptLine
-} from "../src/handoff-receipt.js";
+} from "../src/handoff/receipt.js";
 
 describe("handoff receipt", () => {
   it("parses a valid receipt and caps stored fields", () => {

@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { initConfig } from "../config.js";
+import { initConfig } from "../config/index.js";
 import type { CliOptions } from "../cli-options.js";
 
 export const runInitCommand = async (options: CliOptions): Promise<void> => {

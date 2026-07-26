@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
-import { isRoutingRequested, resolveRouteForLaunch } from "../src/launch-routing.js";
+import { defaultConfig } from "../src/config/index.js";
+import { isRoutingRequested, resolveRouteForLaunch } from "../src/routing/launch.js";
 import { makeTempDir } from "./support/tmp.js";
 
 

@@ -2,9 +2,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
-import { runHarness, type PtyFactory } from "../src/harness.js";
-import { classifyTask } from "../src/routing.js";
+import { defaultConfig } from "../src/config/index.js";
+import { runHarness, type PtyFactory } from "../src/harness/index.js";
+import { classifyTask } from "../src/routing/classify.js";
 import { makeTempDir } from "./support/tmp.js";
 import { FakePty } from "./support/fake-pty.js";
 

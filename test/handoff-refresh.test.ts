@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
+import { defaultConfig } from "../src/config/index.js";
 import { makeTempDir } from "./support/tmp.js";
 import {
   appendSwitchHistoryLine,
@@ -10,7 +10,7 @@ import {
   replaceSection,
   startHandoffWatcher,
   type HandoffWatcherContext
-} from "../src/handoff-refresh.js";
+} from "../src/handoff/refresh.js";
 
 
 // A minimal handoff file with all managed sections present.

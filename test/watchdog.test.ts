@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createWatchdogTracker } from "../src/watchdog.js";
+import { createWatchdogTracker } from "../src/harness/watchdog.js";
 
 const usage = (usedPercent: number) => ({
   usedPercent,

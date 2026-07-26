@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCommandEcho, renderInteractiveLaunch } from "../src/interactive-provider.js";
+import { formatCommandEcho, renderInteractiveLaunch } from "../src/providers/interactive.js";
 
 describe("renderInteractiveLaunch", () => {
   it("renders first-launch args without a handoff prompt", () => {

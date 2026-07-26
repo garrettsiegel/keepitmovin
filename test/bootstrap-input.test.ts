@@ -3,8 +3,8 @@ import {
   BOOTSTRAP_MAX_WAIT_MS,
   BOOTSTRAP_QUIET_MS,
   createBootstrapWriter
-} from "../src/bootstrap-input.js";
-import type { PtyProcess } from "../src/pty-factory.js";
+} from "../src/harness/bootstrap-input.js";
+import type { PtyProcess } from "../src/pty/factory.js";
 
 const makeChild = (): { child: PtyProcess; writes: string[] } => {
   const writes: string[] = [];

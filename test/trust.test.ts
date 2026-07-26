@@ -1,13 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
+import { defaultConfig } from "../src/config/index.js";
 import {
   assertConfigTrusted,
   computeCustomProviders,
   UntrustedConfigError
-} from "../src/trust.js";
-import type { KeepitmovinConfig, InteractiveProviderConfig } from "../src/types.js";
+} from "../src/config/trust.js";
+import type { KeepitmovinConfig, InteractiveProviderConfig } from "../src/config/types.js";
 import { makeTempDir } from "./support/tmp.js";
 
 

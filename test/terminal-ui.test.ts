@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import stripAnsi from "strip-ansi";
-import { renderCommercialBreak, renderToolCheck } from "../src/terminal-ui.js";
+import { renderCommercialBreak, renderToolCheck } from "../src/ui/terminal.js";
 
 describe("terminal UI", () => {
   it("groups provider checks into friendly setup sections", () => {

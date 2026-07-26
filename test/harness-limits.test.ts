@@ -1,7 +1,7 @@
 import { PassThrough } from "node:stream";
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
-import { runHarness, type PtyFactory } from "../src/harness.js";
+import { defaultConfig } from "../src/config/index.js";
+import { runHarness, type PtyFactory } from "../src/harness/index.js";
 import { makeTempDir } from "./support/tmp.js";
 import { FakePty } from "./support/fake-pty.js";
 

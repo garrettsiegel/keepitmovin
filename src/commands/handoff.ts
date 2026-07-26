@@ -1,6 +1,6 @@
 import chalk from "chalk";
-import { loadConfig } from "../config.js";
-import { summarizeHandoffFile } from "../handoff-file.js";
+import { loadConfig } from "../config/index.js";
+import { summarizeHandoffFile } from "../handoff/file.js";
 import type { CliOptions } from "../cli-options.js";
 
 export const runHandoffCommand = async (options: CliOptions): Promise<void> => {

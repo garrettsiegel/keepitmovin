@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
-import { detectLiveFailure } from "../src/failure-detection.js";
-import { getProviderCatalog } from "../src/provider-catalog.js";
-import type { InteractiveProviderConfig } from "../src/types.js";
+import { defaultConfig } from "../src/config/index.js";
+import { detectLiveFailure } from "../src/detection/failure-detection.js";
+import { getProviderCatalog } from "../src/providers/catalog.js";
+import type { InteractiveProviderConfig } from "../src/config/types.js";
 
 const makeProvider = (
   overrides: Partial<InteractiveProviderConfig> = {}

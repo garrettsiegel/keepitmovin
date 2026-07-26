@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { chooseSwitchProvider } from "../src/switch-menu.js";
-import type { InteractiveProviderConfig } from "../src/types.js";
+import { chooseSwitchProvider } from "../src/harness/switch-menu.js";
+import type { InteractiveProviderConfig } from "../src/config/types.js";
 
 const makeProvider = (name: string): InteractiveProviderConfig => ({
   name,

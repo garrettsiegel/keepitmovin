@@ -1,7 +1,7 @@
 import { appendFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { startCompactionProbe } from "../src/compaction-probe.js";
+import { startCompactionProbe } from "../src/probes/compaction.js";
 import { makeTempDir } from "./support/tmp.js";
 
 const tempDir = async (): Promise<string> => makeTempDir("kim-compaction");

@@ -1,6 +1,6 @@
-export { defaultConfig, initConfig, loadConfig, keepitmovinConfigSchema } from "./config.js";
+export { defaultConfig, initConfig, loadConfig, keepitmovinConfigSchema } from "./config/index.js";
 export { runDoctor } from "./doctor.js";
-export { classifyError } from "./errors.js";
+export { classifyError } from "./detection/errors.js";
 export {
   appendHandoffCheckpoint,
   archiveHandoffFile,
@@ -10,28 +10,28 @@ export {
   createHandoffFile,
   getHandoffPaths,
   summarizeHandoffFile
-} from "./handoff-file.js";
-export { runHarness } from "./harness.js";
-export { addExecutableBits, ensurePtyHelperExecutable } from "./pty-helper.js";
-export { renderInteractiveLaunch } from "./interactive-provider.js";
+} from "./handoff/file.js";
+export { runHarness } from "./harness/index.js";
+export { addExecutableBits, ensurePtyHelperExecutable } from "./pty/helper.js";
+export { renderInteractiveLaunch } from "./providers/interactive.js";
 export {
   applyRouteToLaunch,
   CLAUDE_ROUTE_PROFILES,
   CODEX_ROUTE_PROFILES,
   readCodexModels,
   resolveProviderRoute
-} from "./model-routing.js";
-export { classifyTask, escalateTier, overrideTier } from "./routing.js";
-export { readLatestSessionLog, readRecentSessionLogs, writeSessionLog } from "./session-log.js";
-export { applyProviderOrder, applyRoutingPreference, getSetupState, runSetupWizard } from "./setup.js";
-export { isRoutingRequested, resolveRouteForLaunch, resolveTaskForLaunch } from "./launch-routing.js";
-export { RollingTranscript } from "./transcript.js";
+} from "./routing/model.js";
+export { classifyTask, escalateTier, overrideTier } from "./routing/classify.js";
+export { readLatestSessionLog, readRecentSessionLogs, writeSessionLog } from "./session/log.js";
+export { applyProviderOrder, applyRoutingPreference, getSetupState, runSetupWizard } from "./setup/index.js";
+export { isRoutingRequested, resolveRouteForLaunch, resolveTaskForLaunch } from "./routing/launch.js";
+export { RollingTranscript } from "./harness/transcript.js";
 export {
   createHandoffReceiptTracker,
   HANDOFF_RECEIPT_PREFIX,
   HANDOFF_RECEIPT_TIMEOUT_MS,
   parseHandoffReceiptLine
-} from "./handoff-receipt.js";
+} from "./handoff/receipt.js";
 export {
   buildNudgeMessage,
   buildCompactionNudgeMessage,
@@ -39,15 +39,15 @@ export {
   refreshHandoffFile,
   replaceSection,
   startHandoffWatcher
-} from "./handoff-refresh.js";
-export { resolveCompactionProbeDir, startCompactionProbe } from "./compaction-probe.js";
-export type { CompactionProbeOptions } from "./compaction-probe.js";
-export { createWatchdogTracker } from "./watchdog.js";
-export { startWatchdogProgressProbe } from "./watchdog-progress.js";
-export { createKeepitmovinMcpServer, serveKeepitmovinMcp } from "./mcp-server.js";
-export { readMcpHandoff, readMcpSessionSummaries } from "./mcp-data.js";
-export { changeMcpInstallations, resolveMcpServerCommand } from "./mcp-installer.js";
-export { getMcpClientStatuses, MCP_CLIENTS } from "./mcp-clients.js";
+} from "./handoff/refresh.js";
+export { resolveCompactionProbeDir, startCompactionProbe } from "./probes/compaction.js";
+export type { CompactionProbeOptions } from "./probes/compaction.js";
+export { createWatchdogTracker } from "./harness/watchdog.js";
+export { startWatchdogProgressProbe } from "./harness/watchdog-progress.js";
+export { createKeepitmovinMcpServer, serveKeepitmovinMcp } from "./mcp/server.js";
+export { readMcpHandoff, readMcpSessionSummaries } from "./mcp/data.js";
+export { changeMcpInstallations, resolveMcpServerCommand } from "./mcp/installer.js";
+export { getMcpClientStatuses, MCP_CLIENTS } from "./mcp/clients.js";
 export {
   checkUsageThreshold,
   formatUsageProbeMessage,
@@ -55,9 +55,9 @@ export {
   readProviderUsage,
   resolveUsageProbe,
   startUsageProbe
-} from "./usage-probe.js";
-export type { ResolvedUsageProbe, UsageProbeOptions, UsageSnapshot } from "./usage-probe.js";
-export { ensureProviderFreshness } from "./updates.js";
+} from "./probes/usage.js";
+export type { ResolvedUsageProbe, UsageProbeOptions, UsageSnapshot } from "./probes/usage.js";
+export { ensureProviderFreshness } from "./setup/updates.js";
 export {
   formatChangedFiles,
   formatGitSnapshot,
@@ -66,7 +66,7 @@ export {
   getGitRoot,
   getGitSnapshot,
   isGitRepo
-} from "./git.js";
+} from "./util/git.js";
 export {
   getCatalogEntry,
   getDefaultInteractiveProviders,
@@ -79,14 +79,14 @@ export {
   mergeCatalogInteractiveProviders,
   PROVIDER_CATALOG,
   reconcileProviderOrder
-} from "./provider-catalog.js";
+} from "./providers/catalog.js";
 // Previously absent from the barrel even though they are the pieces a consumer
 // most plausibly needs: the live detector, the redactor applied to every
 // persisted artifact, the recursive-delete guard, and config save/trust.
-export { detectLiveFailure, detectExitFailure } from "./failure-detection.js";
-export { redactSecrets } from "./redact.js";
-export { isSafeToRecursivelyDelete, isStrictlyInside, resolveFromCwd } from "./paths.js";
-export { assessHandoffQuality } from "./handoff-quality.js";
+export { detectLiveFailure, detectExitFailure } from "./detection/failure-detection.js";
+export { redactSecrets } from "./util/redact.js";
+export { isSafeToRecursivelyDelete, isStrictlyInside, resolveFromCwd } from "./util/paths.js";
+export { assessHandoffQuality } from "./handoff/quality.js";
 
 export type {
   AgentErrorType,
@@ -106,4 +106,4 @@ export type {
   CompactionProbeSpec,
   UsageProbeKind,
   UsageProbeSpec
-} from "./types.js";
+} from "./config/types.js";

@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { runSetupWizard } from "../setup.js";
+import { runSetupWizard } from "../setup/index.js";
 import type { CliOptions } from "../cli-options.js";
 
 export const runSetupCommand = async (options: CliOptions): Promise<void> => {

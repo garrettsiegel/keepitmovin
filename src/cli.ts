@@ -17,9 +17,9 @@ import {
   splitExplicitTaskArgv,
   type CliOptions
 } from "./cli-options.js";
-import { reasoningEffortSchema, routingTierSchema } from "./routing-config.js";
-import { installTerminalRestoreHook } from "./terminal-restore.js";
-import type { ReasoningEffort, RoutingTier } from "./types.js";
+import { reasoningEffortSchema, routingTierSchema } from "./routing/config.js";
+import { installTerminalRestoreHook } from "./ui/restore.js";
+import type { ReasoningEffort, RoutingTier } from "./config/types.js";
 
 const parseTier = (value: string): RoutingTier => {
   const parsed = routingTierSchema.safeParse(value);

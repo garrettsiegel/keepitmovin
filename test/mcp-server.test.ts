@@ -3,10 +3,10 @@ import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
-import { readMcpHandoff } from "../src/mcp-data.js";
-import { createKeepitmovinMcpServer } from "../src/mcp-server.js";
-import { writeSessionLog } from "../src/session-log.js";
+import { defaultConfig } from "../src/config/index.js";
+import { readMcpHandoff } from "../src/mcp/data.js";
+import { createKeepitmovinMcpServer } from "../src/mcp/server.js";
+import { writeSessionLog } from "../src/session/log.js";
 import { makeTempDir } from "./support/tmp.js";
 
 const project = async (): Promise<string> => {

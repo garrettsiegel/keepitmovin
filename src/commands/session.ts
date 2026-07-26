@@ -1,6 +1,6 @@
 import chalk from "chalk";
-import { loadConfig } from "../config.js";
-import { readLatestSessionLog } from "../session-log.js";
+import { loadConfig } from "../config/index.js";
+import { readLatestSessionLog } from "../session/log.js";
 import type { CliOptions } from "../cli-options.js";
 
 export const runSessionCommand = async (options: CliOptions): Promise<void> => {

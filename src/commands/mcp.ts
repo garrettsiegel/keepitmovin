@@ -1,7 +1,7 @@
 import chalk from "chalk";
-import { getMcpClientStatuses } from "../mcp-clients.js";
-import { changeMcpInstallations } from "../mcp-installer.js";
-import { serveKeepitmovinMcp } from "../mcp-server.js";
+import { getMcpClientStatuses } from "../mcp/clients.js";
+import { changeMcpInstallations } from "../mcp/installer.js";
+import { serveKeepitmovinMcp } from "../mcp/server.js";
 
 export const runMcpServeCommand = async (options: {
   cwd?: string;

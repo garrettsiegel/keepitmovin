@@ -1,9 +1,9 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { defaultConfig } from "../src/config.js";
+import { defaultConfig } from "../src/config/index.js";
 import { runDoctor } from "../src/doctor.js";
-import { trustConfigFile } from "../src/trust.js";
+import { trustConfigFile } from "../src/config/trust.js";
 import { makeTempDir } from "./support/tmp.js";
 
 

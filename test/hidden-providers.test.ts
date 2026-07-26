@@ -8,10 +8,10 @@ import {
   isHiddenProviderName,
   mergeCatalogInteractiveProviders,
   reconcileProviderOrder
-} from "../src/provider-catalog.js";
-import { buildStackOptions, renderCatalogPreview } from "../src/setup-prompts.js";
-import type { ToolStatus } from "../src/tool-status.js";
-import type { InteractiveProviderConfig } from "../src/types.js";
+} from "../src/providers/catalog.js";
+import { buildStackOptions, renderCatalogPreview } from "../src/setup/prompts.js";
+import type { ToolStatus } from "../src/providers/tool-status.js";
+import type { InteractiveProviderConfig } from "../src/config/types.js";
 
 const HIDDEN_NAMES = ["cline", "aider", "goose", "amp", "droid", "openrouter"] as const;
 

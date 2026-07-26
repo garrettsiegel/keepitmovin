@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { redactSecrets } from "../src/redact.js";
+import { redactSecrets } from "../src/util/redact.js";
 
 describe("redactSecrets", () => {
   const positives: Array<[string, string, string]> = [

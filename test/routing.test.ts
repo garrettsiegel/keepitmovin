@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyTask, overrideTier } from "../src/routing.js";
+import { classifyTask, overrideTier } from "../src/routing/classify.js";
 
 describe("task routing", () => {
   it.each([
