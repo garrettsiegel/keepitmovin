@@ -48,9 +48,6 @@ const box = (title: string, lines: string[]): string => {
   return [top, titleLine, divider, ...body, bottom].join("\n");
 };
 
-const bullet = (label: string, text: string): string =>
-  `${chalk.cyan("•")} ${chalk.bold(label)} ${chalk.gray(text)}`;
-
 const statusPill = (status: ToolStatusView): string => {
   if (status.group === "guided" || status.controllable === false) {
     if (status.integrationType === "cloud_link") {
@@ -124,22 +121,6 @@ const sectionRows = (
   ];
 };
 
-export const renderSetupIntro = (): string => [
-  "",
-  box("keepitmovin", [
-    "Run your coding tools in one terminal, in a fallback order you choose.",
-    "keepitmovin starts the first tool, keeps a live handoff file,",
-    "and switches to the next tool when one hits a limit or fails."
-  ]),
-  "",
-  chalk.bold("How this works"),
-  bullet("1.", "Pick the tools you want and the order to try them."),
-  bullet("2.", "keepitmovin starts the first installed tool for you."),
-  bullet("3.", "If it hits a limit, keepitmovin hands the next tool your handoff file."),
-  "",
-  chalk.gray("keepitmovin can't copy a tool's private chat history — the handoff file is what carries your context across.")
-].join("\n");
-
 export const renderToolCheck = (statuses: ToolStatusView[]): string => {
   const nameWidth = Math.max(...statuses.map((status) => visibleLength(status.label)), 10);
   const commandWidth = Math.max(...statuses.map((status) => visibleLength(status.command || "setup guide")), 10);
@@ -165,17 +146,6 @@ export const renderToolCheck = (statuses: ToolStatusView[]): string => {
   ].join("\n");
 };
 
-export const formatToolChoiceLabel = (
-  provider: InteractiveProviderConfig,
-  status: ToolStatusView | undefined
-): string => {
-  if (status?.available) {
-    return `${provider.label} ${chalk.gray("ready")}`;
-  }
-
-  return `${provider.label} ${chalk.gray("add later")}`;
-};
-
 export const renderProviderOrderSummary = (
   providers: InteractiveProviderConfig[],
   providerOrder: string[]
@@ -184,14 +154,6 @@ export const renderProviderOrderSummary = (
   const labels = providerOrder.map((name) => providerMap.get(name) ?? name);
   return `${chalk.bold("Fallback order")} ${chalk.green(labels.join(" → "))}`;
 };
-
-export const renderSetupSaved = (configPath: string, chain: string): string => [
-  "",
-  chalk.green("keepitmovin setup saved."),
-  `${chalk.bold("Config")} ${chalk.gray(configPath)}`,
-  chain,
-  ""
-].join("\n");
 
 // Short, calm copy for the switch notice, keyed by the reason it triggered.
 // Falls back to a generic line for reasons without specific text (nonzero_exit,

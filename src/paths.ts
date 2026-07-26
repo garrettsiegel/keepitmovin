@@ -73,9 +73,6 @@ export const isSafeToRecursivelyDelete = (
  */
 export const ARTIFACT_FILE_MODE = 0o600;
 
-/** Mode for the directories those artifacts live in. */
-export const ARTIFACT_DIR_MODE = 0o700;
-
 /**
  * Writes `content` to `file` atomically: to a sibling temp file first, then a
  * rename over the target.

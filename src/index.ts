@@ -60,7 +60,6 @@ export type { ResolvedUsageProbe, UsageProbeOptions, UsageSnapshot } from "./usa
 export { ensureProviderFreshness } from "./updates.js";
 export {
   formatChangedFiles,
-  formatGitContext,
   formatGitSnapshot,
   getChangedFiles,
   getGitContext,
@@ -104,7 +103,6 @@ export type {
   RoutingTier,
   SessionOutcome,
   KeepitmovinConfig,
-  CompactionProbeKind,
   CompactionProbeSpec,
   UsageProbeKind,
   UsageProbeSpec

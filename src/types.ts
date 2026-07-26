@@ -75,7 +75,6 @@ export type AgentErrorType =
 // How keepitmovin reads a tool's own local usage/limit state. Only one kind exists
 // today; widen UsageProbeKind to a union when another tool exposes headroom data.
 export type UsageProbeKind = "codex-session-files";
-export type CompactionProbeKind = "claude-transcript" | "codex-session-files";
 
 // Derived from the zod schemas rather than restated. These interfaces used to be
 // written out by hand alongside the schema in config.ts; nothing kept the two in

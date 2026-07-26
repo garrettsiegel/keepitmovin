@@ -67,107 +67,49 @@ export const getChangedFiles = async (cwd: string): Promise<string[]> => {
   return [...new Set(files.filter(Boolean))].sort();
 };
 
-export const getGitContext = async (
-  cwd: string,
-  maxDiffChars: number
-): Promise<GitContext> => {
-  const repo = await isGitRepo(cwd);
-
-  if (!repo) {
-    return {
-      isGitRepo: false,
-      statusShort: "",
-      diffStat: "",
-      diffNameOnly: "",
-      recentDiff: "",
-      changedFiles: []
-    };
-  }
-
-  const [root, statusShort, diffStat, diffNameOnly, rawDiff, changedFiles] =
-    await Promise.all([
-      getGitRoot(cwd),
-      runGit(cwd, ["status", "--short"]),
-      runGit(cwd, ["diff", "--stat"]),
-      runGit(cwd, ["diff", "--name-only"]),
-      runGit(cwd, ["diff", "--", "."]),
-      getChangedFiles(cwd)
-    ]);
-
-  const recentDiff =
-    rawDiff.length > maxDiffChars
-      ? `${rawDiff.slice(0, maxDiffChars)}\n\n[Diff truncated at ${maxDiffChars} characters]`
-      : rawDiff;
-
-  return {
-    isGitRepo: true,
-    root,
-    statusShort,
-    diffStat,
-    diffNameOnly,
-    recentDiff,
-    changedFiles
-  };
+const NOT_A_REPO: GitContext = {
+  isGitRepo: false,
+  statusShort: "",
+  diffStat: "",
+  diffNameOnly: "",
+  recentDiff: "",
+  changedFiles: []
 };
 
-export const getGitSnapshot = async (cwd: string): Promise<GitContext> => {
-  const repo = await isGitRepo(cwd);
-
-  if (!repo) {
-    return {
-      isGitRepo: false,
-      statusShort: "",
-      diffStat: "",
-      diffNameOnly: "",
-      recentDiff: "",
-      changedFiles: []
-    };
+/**
+ * Reads the working-tree state. `maxDiffChars` opts into the expensive part —
+ * a full `git diff -- .`, truncated to that many characters. Omit it (or use
+ * getGitSnapshot) when only the status and changed-file list are needed.
+ */
+export const getGitContext = async (
+  cwd: string,
+  maxDiffChars?: number
+): Promise<GitContext> => {
+  if (!(await isGitRepo(cwd))) {
+    return { ...NOT_A_REPO };
   }
 
-  const [root, statusShort, diffStat, diffNameOnly, changedFiles] = await Promise.all([
+  const wantsDiff = maxDiffChars !== undefined;
+  const [root, statusShort, diffStat, diffNameOnly, changedFiles, rawDiff] = await Promise.all([
     getGitRoot(cwd),
     runGit(cwd, ["status", "--short"]),
     runGit(cwd, ["diff", "--stat"]),
     runGit(cwd, ["diff", "--name-only"]),
-    getChangedFiles(cwd)
+    getChangedFiles(cwd),
+    wantsDiff ? runGit(cwd, ["diff", "--", "."]) : Promise.resolve("")
   ]);
 
-  return {
-    isGitRepo: true,
-    root,
-    statusShort,
-    diffStat,
-    diffNameOnly,
-    recentDiff: "",
-    changedFiles
-  };
+  const recentDiff =
+    wantsDiff && rawDiff.length > maxDiffChars
+      ? `${rawDiff.slice(0, maxDiffChars)}\n\n[Diff truncated at ${maxDiffChars} characters]`
+      : rawDiff;
+
+  return { isGitRepo: true, root, statusShort, diffStat, diffNameOnly, recentDiff, changedFiles };
 };
 
-export const formatGitContext = (context: GitContext): string => {
-  if (!context.isGitRepo) {
-    return "No git repository detected.";
-  }
+/** getGitContext without the full-diff read. */
+export const getGitSnapshot = (cwd: string): Promise<GitContext> => getGitContext(cwd);
 
-  return [
-    `Git root: ${context.root ?? "unknown"}`,
-    "",
-    "git status --short:",
-    context.statusShort || "(clean)",
-    "",
-    "git diff --stat:",
-    context.diffStat || "(no unstaged diff)",
-    "",
-    "git diff --name-only:",
-    context.diffNameOnly || "(no changed tracked files)",
-    "",
-    "Recent diff:",
-    context.recentDiff || "(no diff)"
-  ].join("\n");
-};
-
-// Lean snapshot for the handoff file: no raw diff. The next agent works in the
-// same repo and can run `git diff` itself; the handoff carries narrative, not
-// transcripts of the diff.
 export const formatGitSnapshot = (context: GitContext): string => {
   if (!context.isGitRepo) {
     return "No git repository detected.";

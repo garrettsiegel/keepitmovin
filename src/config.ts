@@ -1,7 +1,7 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ensureArtifactsIgnored } from "./artifacts.js";
-import type { AgentErrorType, KeepitmovinConfig } from "./types.js";
+import type { KeepitmovinConfig } from "./types.js";
 import {
   mergeCatalogInteractiveProviders,
   reconcileProviderOrder
@@ -131,16 +131,4 @@ export const saveConfig = async (
     "utf8"
   );
   return resolvedPath;
-};
-
-export const isFallbackEligible = (
-  errorType: AgentErrorType | undefined,
-  configFallbackOn: AgentErrorType[],
-  providerFallbackOn?: AgentErrorType[]
-): boolean => {
-  if (!errorType) {
-    return false;
-  }
-
-  return (providerFallbackOn ?? configFallbackOn).includes(errorType);
 };
