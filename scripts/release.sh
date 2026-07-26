@@ -10,8 +10,12 @@
 #               publish for real.
 #   --yes, -y   Skip the interactive confirmation prompt (for CI/non-interactive use).
 #
-# Requires: a clean working tree on `main`, in sync with origin/main, and an
-# active `npm login` session. Refuses to run otherwise.
+# Publishing itself happens in CI: pushing the tag triggers
+# .github/workflows/release.yml, which republishes from a clean checkout with npm
+# provenance. This script never runs `npm publish` for real.
+#
+# Requires: a clean working tree on `main`, in sync with origin/main.
+# Refuses to run otherwise.
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -34,12 +38,9 @@ if [[ -z "$BUMP" ]]; then
   exit 1
 fi
 
-# Prefer the known-good standalone pnpm binary. On this monorepo the Corepack
-# shim can exist on PATH but fail during package-manager execution.
-PNPM="$HOME/Library/pnpm/pnpm"
-if [[ ! -x "$PNPM" ]]; then
-  PNPM="pnpm"
-fi
+# Use whatever pnpm the repo's `packageManager` field resolves to, so the script
+# behaves the same on any machine and in CI.
+PNPM="pnpm"
 
 # Keep npm cache writes out of a machine-wide cache that may be owned by a
 # different user, while still reading the caller's normal ~/.npmrc credentials.
@@ -68,13 +69,11 @@ if [[ "$DRY_RUN" != true ]]; then
     exit 1
   fi
 
-  echo "==> Checking npm auth"
-  NPM_USER="$(npm whoami 2>/dev/null || true)"
-  if [[ -z "$NPM_USER" ]]; then
-    echo "Not logged in to npm. Run 'npm login' first." >&2
+  echo "==> Checking the release workflow is present"
+  if [[ ! -f .github/workflows/release.yml ]]; then
+    echo "Missing .github/workflows/release.yml — the tag would never publish." >&2
     exit 1
   fi
-  echo "npm user: $NPM_USER"
 fi
 
 echo "==> Build"
@@ -85,17 +84,27 @@ echo "==> Lint"
 "$PNPM" lint
 
 CURRENT_VERSION="$(node -p "require('./package.json').version")"
+# Informational only — `npm version "$BUMP"` below performs the real bump.
+# Note: `npm version --dry-run` is NOT safe here; it rewrites package.json anyway.
+# The previous split(".").map(Number) produced NaN on any prerelease version, so
+# prerelease bumps are handled explicitly (npm semantics: a patch bump on
+# 2.1.0-beta.1 releases 2.1.0 rather than moving to 2.1.1).
 NEXT_VERSION="$(node -e '
   const bump = process.argv[1];
-  const [major, minor, patch] = require("./package.json").version.split(".").map(Number);
-  if (bump === "major") console.log([major + 1, 0, 0].join("."));
-  else if (bump === "minor") console.log([major, minor + 1, 0].join("."));
-  else if (bump === "patch") console.log([major, minor, patch + 1].join("."));
+  const current = require("./package.json").version;
+  const parsed = /^(\d+)\.(\d+)\.(\d+)(?:-(.+))?$/.exec(current);
+  if (!parsed) { console.log(bump.replace(/^v/, "")); process.exit(0); }
+  const [major, minor, patch] = parsed.slice(1, 4).map(Number);
+  const prerelease = parsed[4];
+  if (bump === "major") console.log(prerelease && minor === 0 && patch === 0 ? `${major}.0.0` : `${major + 1}.0.0`);
+  else if (bump === "minor") console.log(prerelease && patch === 0 ? `${major}.${minor}.0` : `${major}.${minor + 1}.0`);
+  else if (bump === "patch") console.log(prerelease ? `${major}.${minor}.${patch}` : `${major}.${minor}.${patch + 1}`);
   else console.log(bump.replace(/^v/, ""));
 ' "$BUMP")"
 
 if [[ "$DRY_RUN" == true ]]; then
-  echo "==> [dry-run] Would bump $CURRENT_VERSION -> $NEXT_VERSION, commit, tag, push, and publish."
+  echo "==> [dry-run] Would bump $CURRENT_VERSION -> $NEXT_VERSION, commit, tag, and push."
+  echo "==> [dry-run] CI would then publish v$NEXT_VERSION from the tag."
   echo "==> [dry-run] Previewing npm package contents (no git/npm mutation)"
   npm publish --dry-run
   echo "==> [dry-run] Done. Re-run without --dry-run to actually release."
@@ -107,7 +116,7 @@ echo "This will:"
 echo "  1. Bump version $CURRENT_VERSION -> $NEXT_VERSION"
 echo "  2. Commit and tag v$NEXT_VERSION"
 echo "  3. Push main + tags to origin"
-echo "  4. Publish $NEXT_VERSION to npm"
+echo "  4. Trigger the release workflow, which publishes $NEXT_VERSION to npm"
 echo ""
 
 if [[ "$ASSUME_YES" != true ]]; then
@@ -124,7 +133,6 @@ npm version "$BUMP" -m "release: v%s"
 echo "==> Pushing to origin"
 git push origin main --follow-tags
 
-echo "==> Publishing to npm"
-npm publish
-
-echo "==> Released v$NEXT_VERSION"
+echo "==> Tagged v$NEXT_VERSION and pushed."
+echo "    CI publishes from the tag with provenance. Watch it here:"
+echo "    https://github.com/garrettsiegel/keepitmovin/actions/workflows/release.yml"

@@ -19,15 +19,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enable pnpm
-        run: corepack enable
-
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
+      - name: Enable pnpm
+        run: corepack enable
+
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      # node-pty is the whole point of the harness. It has no Linux prebuild, so
+      # without an approved build script CI would silently exercise the degraded
+      # pipe fallback and every PTY behavior would go untested.
+      - name: Assert node-pty built (no silent pipe fallback)
+        run: node -e "require('node-pty'); console.log('node-pty loaded')"
 
       - name: Build
         run: pnpm build
@@ -44,12 +50,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Enable pnpm
-        run: corepack enable
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Enable pnpm
+        run: corepack enable
 
       - name: Install site dependencies
         working-directory: site

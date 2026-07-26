@@ -1,0 +1,33 @@
+version: 2
+
+updates:
+  # Root CLI package.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+
+  # site/ is a separate dependency tree with its own lockfile, so it needs its
+  # own entry — the root ecosystem never sees it.
+  - package-ecosystem: npm
+    directory: /site
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      astro:
+        patterns:
+          - "astro"
+          - "@astrojs/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
