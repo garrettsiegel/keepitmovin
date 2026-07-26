@@ -1,8 +1,35 @@
 ---
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import BaseLayout from "../layouts/BaseLayout.astro";
 
-const source = await readFile(new URL("../../../CHANGELOG.md", import.meta.url), "utf8");
+// CHANGELOG.md lives at the repo root, one level above this Astro project.
+//
+// This used to resolve `../../../CHANGELOG.md` from `import.meta.url`, which
+// assumed the page stays where its source file is. Astro 7 bundles prerendered
+// pages into `dist/.prerender/chunks/`, so that relative walk landed on
+// `site/CHANGELOG.md` and the build died with ENOENT. Resolve from the project
+// root instead — that is stable regardless of where the page gets bundled.
+const candidates = [
+  path.resolve(process.cwd(), "../CHANGELOG.md"), // build run from site/
+  path.resolve(process.cwd(), "CHANGELOG.md") // build run from the repo root
+];
+
+const readChangelog = async (): Promise<string> => {
+  for (const candidate of candidates) {
+    try {
+      return await readFile(candidate, "utf8");
+    } catch {
+      // Try the next candidate.
+    }
+  }
+
+  throw new Error(
+    `changelog.astro could not find CHANGELOG.md. Looked in:\n  ${candidates.join("\n  ")}`
+  );
+};
+
+const source = await readChangelog();
 const escape = (value: string): string => value
   .replaceAll("&", "&amp;")
   .replaceAll("<", "&lt;")

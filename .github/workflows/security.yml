@@ -39,15 +39,6 @@ jobs:
         working-directory: site
         run: pnpm install --frozen-lockfile
 
-      # Informational, unlike the package audit above. site/ is the static
-      # marketing site, not the published artifact, and it currently carries
-      # Astro advisories (reflected XSS via slot name, host-header SSRF in the
-      # prerendered error page) that are only patched in Astro >= 6.4.6. Both are
-      # SSR-shaped issues and this site is `output: "static"`, so the practical
-      # exposure is low. Moving to Astro 7 also needs a fix to
-      # site/src/pages/changelog.astro, which resolves ../../../CHANGELOG.md from
-      # import.meta.url — Astro 7 bundles the page elsewhere and that path breaks.
-      # Tracked by the Dependabot astro PR; make this blocking again once merged.
-      - name: Audit site dependencies (informational)
+      - name: Audit site dependencies (fail on high+)
         working-directory: site
-        run: pnpm audit --prod --audit-level high || true
+        run: pnpm audit --prod --audit-level high

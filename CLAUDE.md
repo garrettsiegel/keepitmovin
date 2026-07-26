@@ -72,7 +72,7 @@ Other supporting modules:
 
 | Dir | What it is |
 |---|---|
-| `site/` | The keepitmovin.dev website — Astro 5, fully static, no UI framework. **Standalone package (`keepitmovin-site`) with its own `pnpm-lock.yaml`, separate from this package** — run `pnpm install` / `pnpm dev` / `pnpm build` from inside `site/`. Deployed on Vercel (frozen lockfile install, so keep `site/pnpm-lock.yaml` in sync with its `package.json`). Docs pages mirror README wording — re-sync them when README behavior changes. |
+| `site/` | The keepitmovin.dev website — Astro 7, fully static, no UI framework. **Standalone package (`keepitmovin-site`) with its own `pnpm-lock.yaml`, separate from this package** — run `pnpm install` / `pnpm dev` / `pnpm build` from inside `site/`. Deployed on Vercel (frozen lockfile install, so keep `site/pnpm-lock.yaml` in sync with its `package.json`). Docs pages mirror README wording — re-sync them when README behavior changes. |
 | `demo/` | VHS recording setup for the README hero GIF (`public/kim-demo.gif`). It drives the **real** harness; only the agents are stubs (`agent.sh`), with catalog-avoiding internal names `demo-a`/`demo-b`. See `demo/README.md` before regenerating. |
 | `scripts/` | `release.sh` (the `pnpm release` flow). |
 
@@ -109,6 +109,19 @@ Other supporting modules:
   `startsWith` prose guard. Changing any layer, or the detection scope, can cause unwanted
   mid-session switches — test all of "prose mentions a limit → no switch", "percentage warning
   (flat and TUI-wrapped) → no switch", and "real limit banner → switch".
+- **Never run `pnpm install` inside `site/` while this repo sits inside the personal
+  monorepo.** `site/` is standalone with its own lockfile, but pnpm walks up, finds the
+  monorepo's `pnpm-workspace.yaml`, and installs against *that* root — it rewrites the
+  monorepo lockfile, installs unrelated packages, and leaves `site/pnpm-lock.yaml`
+  untouched, so `site/package.json` and its lockfile silently disagree and every
+  `--frozen-lockfile` build (CI and Vercel) then fails. Copy `site/` plus the repo's
+  `CHANGELOG.md` to a directory outside the monorepo, install there, and copy
+  `package.json` + `pnpm-lock.yaml` back. CI and Vercel are unaffected: they check out
+  this repo standalone, with no workspace above it.
+- **`site/src/pages/changelog.astro` reads the repo-root `CHANGELOG.md` via
+  `process.cwd()`, not `import.meta.url`.** Astro 7 bundles prerendered pages into
+  `dist/.prerender/chunks/`, so a path relative to the module resolves to
+  `site/CHANGELOG.md` and the build dies with ENOENT. Keep it cwd-relative.
 - **PTY vs. pipe fallback.** When `node-pty` can't load, the harness falls back to a piped
   `child_process` (`pty-factory.ts`) that lacks TTY semantics (no resize, degraded interactivity).
   Guard PTY-only calls (e.g. `resize`) for the fallback.

@@ -57,6 +57,9 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 ### Changed
 
+- Site: upgraded Astro 5 -> 7, clearing high-severity reflected-XSS and host-header-SSRF
+  advisories, and pinned `postcss >= 8.5.18` / `sharp >= 0.35.0`. The site audit reports no known
+  vulnerabilities and is a blocking CI check again.
 - Releases publish from CI on a tag push using npm trusted publishing (OIDC), with provenance and
   no stored npm token. `pnpm release` now tags and pushes; it no longer publishes directly.
 - `exports` lists `types` before `import`, as condition order requires.
