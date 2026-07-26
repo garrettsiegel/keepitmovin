@@ -74,8 +74,6 @@ export {
   getProviderCatalog,
   isCatalogHarnessProvider,
   isHarnessControllable,
-  isHiddenCatalogEntry,
-  isHiddenProviderName,
   mergeCatalogInteractiveProviders,
   PROVIDER_CATALOG,
   reconcileProviderOrder

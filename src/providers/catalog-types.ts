@@ -8,18 +8,11 @@ export interface ProviderCommandSpec {
   args: string[];
 }
 
-// "full": verified install/auth/transport and (for launchable tools) curated
-// limit banners — shown everywhere. "hidden": entry is kept so existing configs
-// that reference it keep working, but it is left out of the setup wizard, config
-// defaults, and docs until it earns full support. Absent means "full".
-export type ProviderSupportLevel = "full" | "hidden";
-
 export interface ProviderCatalogEntry {
   name: string;
   label: string;
   group: ProviderCatalogGroup;
   integrationType: ProviderIntegrationType;
-  supportLevel?: ProviderSupportLevel;
   command?: string;
   versionArgs?: string[];
   defaultEnabled: boolean;

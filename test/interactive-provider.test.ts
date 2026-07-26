@@ -51,10 +51,10 @@ describe("renderInteractiveLaunch", () => {
   it("renders bootstrap input for tools that need prompt text typed after launch", () => {
     const launch = renderInteractiveLaunch(
       {
-        name: "aider",
-        label: "Aider",
+        name: "custom-repl",
+        label: "Custom REPL",
         enabled: true,
-        command: "aider",
+        command: "custom-repl",
         args: [],
         handoffArgs: [],
         integrationType: "pty_with_bootstrap_input",
@@ -71,7 +71,7 @@ describe("renderInteractiveLaunch", () => {
     );
 
     expect(launch).toEqual({
-      command: "aider",
+      command: "custom-repl",
       args: [],
       bootstrapInput:
         "Read the keepitmovin handoff at /tmp/project/.keepitmovin/current/handoff.md first, then continue from where the previous tool left off.\n"
@@ -92,7 +92,7 @@ describe("formatCommandEcho", () => {
 
   it("collapses a long prompt argument to a count marker", () => {
     const longPrompt = "read the handoff file at /tmp/project/.keepitmovin/current/handoff.md and continue the work exactly where the previous tool left off";
-    expect(formatCommandEcho("cline", [longPrompt])).toBe("cline [+1 arg]");
+    expect(formatCommandEcho("claude", [longPrompt])).toBe("claude [+1 arg]");
   });
 
   it("pluralizes the marker for multiple long args", () => {

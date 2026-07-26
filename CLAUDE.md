@@ -4,8 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 keepitmovin is an interactive terminal harness for coding agents. It launches a coding tool
 (Claude Code, Codex, Antigravity, opencode, Grok Build, Cursor Agent, GitHub Copilot CLI,
-Ollama — plus hidden entries such as Aider, Goose, Amp, Factory Droid and Cline, which stay in
-the catalog but are excluded from defaults and docs) inside a PTY, watches its output, and
+Ollama) inside a PTY, watches its output, and
 on a recognizable limit/failure builds a handoff file and switches to the next configured provider.
 
 For product/UX context see [README.md](./README.md) (usage). This file is the agent-facing
@@ -123,11 +122,10 @@ entry points and the public barrel.
 - **PTY vs. pipe fallback.** When `node-pty` can't load, the harness falls back to a piped
   `child_process` (`pty/factory.ts`) that lacks TTY semantics (no resize, degraded interactivity).
   Guard PTY-only calls (e.g. `resize`) for the fallback.
-- **Prompt transport.** Claude, Codex, Antigravity, opencode, Grok Build, Cursor Agent (and hidden
-  Cline, Factory Droid) receive the initial or handoff prompt as launch arguments. Kimi CLI, GitHub
-  Copilot CLI, Ollama (and hidden Aider, Goose, Amp) use PTY bootstrap paste (their one-shot prompt
-  flags exit after a turn). Keep transport prompts out of final transcript excerpts when a tool
-  merely echoes its argv.
+- **Prompt transport.** Claude, Codex, Antigravity, opencode, Grok Build and Cursor Agent receive
+  the initial or handoff prompt as launch arguments. Kimi CLI, GitHub Copilot CLI and Ollama use PTY
+  bootstrap paste (their one-shot prompt flags exit after a turn). Keep transport prompts out of
+  final transcript excerpts when a tool merely echoes its argv.
 - **Routing is local and opt-in.** The classifier must remain deterministic and fail soft when the
   Codex model cache is missing. Automatic routing never selects `ultra`; explicit overrides must
   be validated against the model's advertised reasoning levels.

@@ -20,7 +20,7 @@ describe("handoff file helpers", () => {
   it("creates, appends, summarizes, archives, and clears handoff files", async () => {
     const cwd = await makeTempDir();
     const config = defaultConfig();
-    const providers = config.harness.providers.filter((provider) => provider.name !== "cline");
+    const providers = config.harness.providers;
     const livePath = await createHandoffFile(
       cwd,
       config,
@@ -62,7 +62,7 @@ describe("handoff file helpers", () => {
   it("keeps a lean format: one snapshot, no raw diff, trimmed switch history", async () => {
     const cwd = await makeTempDir();
     const config = defaultConfig();
-    const providers = config.harness.providers.filter((provider) => provider.name !== "cline");
+    const providers = config.harness.providers;
     const livePath = await createHandoffFile(cwd, config, providers, "2026-07-05T00:00:00.000Z");
 
     await appendHandoffCheckpoint(cwd, config, {
@@ -180,7 +180,7 @@ describe("handoff file helpers", () => {
 
   it("builds session and provider handoff prompts with the handoff path", () => {
     const config = defaultConfig();
-    const providers = config.harness.providers.filter((provider) => provider.name !== "cline");
+    const providers = config.harness.providers;
     const sessionPrompt = buildSessionPrompt("/repo/.keepitmovin/current/handoff.md", providers);
     const providerPrompt = buildProviderHandoffPrompt(
       "/repo/.keepitmovin/current/handoff.md",

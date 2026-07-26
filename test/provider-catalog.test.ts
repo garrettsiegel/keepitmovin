@@ -11,28 +11,20 @@ import {
 import type { InteractiveProviderConfig } from "../src/config/types.js";
 
 describe("provider catalog", () => {
-  it("contains the V1 provider set: terminal harness tools plus guided OpenRouter", () => {
+  it("contains exactly the nine verified tools", () => {
     const names = getProviderCatalog().map((entry) => entry.name);
 
-    expect(names).toEqual(
-      expect.arrayContaining([
-        "claude",
-        "codex",
-        "kimi",
-        "cline",
-        "antigravity",
-        "opencode",
-        "grok",
-        "cursor",
-        "ollama",
-        "openrouter",
-        "aider",
-        "goose",
-        "amp",
-        "droid",
-        "copilot"
-      ])
-    );
+    expect(names).toEqual([
+      "claude",
+      "codex",
+      "kimi",
+      "antigravity",
+      "opencode",
+      "grok",
+      "cursor",
+      "copilot",
+      "ollama"
+    ]);
   });
 
   it("marks Antigravity, opencode, Grok Build, and Cursor Agent as controllable harness defaults", () => {
@@ -63,9 +55,8 @@ describe("provider catalog", () => {
         })
       ])
     );
-    // Exact default chain order (catalog position drives new-install order).
-    // The nine fully-supported tools, Ollama last as the local fallback. Hidden
-    // tools (Cline, Aider, Goose, Amp, Droid, OpenRouter) are excluded.
+    // Exact default chain order (catalog position drives new-install order),
+    // with Ollama last as the local fallback.
     expect(defaultOrder).toEqual([
       "claude",
       "codex",
@@ -77,56 +68,6 @@ describe("provider catalog", () => {
       "copilot",
       "ollama"
     ]);
-  });
-
-  it("launches Cline in interactive TUI mode with -i", () => {
-    const cline = getCatalogEntry("cline");
-    expect(cline && catalogEntryToInteractiveProvider(cline)).toMatchObject({
-      name: "cline",
-      command: "cline",
-      args: ["-i", "{{sessionPrompt}}"],
-      handoffArgs: ["-i", "{{handoffPrompt}}"],
-      integrationType: "pty",
-      enabled: false
-    });
-  });
-
-  it("keeps Aider, Goose, Amp, and Factory Droid as opt-in harness catalog entries", () => {
-    for (const name of ["aider", "goose", "amp", "droid"] as const) {
-      const entry = getCatalogEntry(name);
-      expect(entry).toMatchObject({
-        group: "harness",
-        controllable: true,
-        defaultEnabled: false
-      });
-    }
-
-    expect(getCatalogEntry("aider")).toMatchObject({
-      command: "aider",
-      integrationType: "pty_with_bootstrap_input",
-      args: [],
-      handoffArgs: []
-    });
-    expect(getCatalogEntry("goose")).toMatchObject({
-      command: "goose",
-      integrationType: "pty_with_bootstrap_input",
-      args: ["session"],
-      handoffArgs: ["session"]
-    });
-    expect(getCatalogEntry("amp")).toMatchObject({
-      command: "amp",
-      integrationType: "pty_with_bootstrap_input",
-      args: [],
-      handoffArgs: []
-    });
-    expect(getCatalogEntry("droid") && catalogEntryToInteractiveProvider(getCatalogEntry("droid")!)).toMatchObject({
-      name: "droid",
-      label: "Factory Droid",
-      command: "droid",
-      integrationType: "pty",
-      args: ["{{sessionPrompt}}"],
-      handoffArgs: ["{{handoffPrompt}}"]
-    });
   });
 
   it("adds Kimi CLI and GitHub Copilot CLI as fully-supported default tools", () => {
@@ -151,16 +92,14 @@ describe("provider catalog", () => {
     });
   });
 
-  it("keeps guided tools out of the auto-switch chain", () => {
-    const openrouter = getCatalogEntry("openrouter");
-
-    expect(openrouter?.group).toBe("guided");
-    expect(openrouter?.controllable).toBe(false);
-    expect(getDefaultInteractiveProviders().find((provider) => provider.name === "openrouter")).toBeUndefined();
+  it("keeps non-controllable integrations out of the auto-switch chain", () => {
     expect(isHarnessControllable({
       integrationType: "external_app",
       controllable: false
     })).toBe(false);
+    expect(isHarnessControllable({ integrationType: "pty", controllable: true })).toBe(true);
+    // Every catalog entry is a controllable harness tool now.
+    expect(getProviderCatalog().every((entry) => entry.group === "harness" && entry.controllable)).toBe(true);
   });
 
   it("adds ollama as the default-enabled local last-resort harness provider", () => {
@@ -285,12 +224,33 @@ describe("provider catalog", () => {
       handoffArgs: ["{{handoffPrompt}}"]
     });
     // Merge only extends providers; caller-owned providerOrder is unchanged.
-    // Hidden catalog tools (Aider, Goose, Amp, Droid) are never appended.
     const mergedNames = merged.map((provider) => provider.name);
     expect(mergedNames).toEqual(expect.arrayContaining(["claude", "grok", "cursor", "copilot"]));
-    for (const hidden of ["aider", "goose", "amp", "droid"]) {
-      expect(mergedNames).not.toContain(hidden);
-    }
+  });
+
+  // Aider, Goose, Amp, Factory Droid, Cline and the OpenRouter gateway were
+  // removed from the catalog. A config still naming one must load and launch
+  // everything else rather than failing.
+  it("keeps a config that names a removed tool loadable", () => {
+    const legacy: InteractiveProviderConfig[] = [
+      {
+        name: "aider",
+        label: "Aider",
+        enabled: true,
+        command: "aider",
+        args: [],
+        handoffArgs: [],
+        integrationType: "pty_with_bootstrap_input"
+      }
+    ];
+
+    const merged = mergeCatalogInteractiveProviders(legacy);
+
+    // The unknown entry is preserved as configured (it is the user's own
+    // command now, not a catalog tool) and the catalog tools are added.
+    expect(merged.find((provider) => provider.name === "aider")).toMatchObject({ command: "aider" });
+    expect(merged.map((provider) => provider.name)).toEqual(expect.arrayContaining(["claude", "codex"]));
+    expect(getCatalogEntry("aider")).toBeUndefined();
   });
 
   it("carries provider-specific limit banners onto the launchable provider", () => {

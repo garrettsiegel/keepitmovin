@@ -27,9 +27,9 @@ describe("config", () => {
         "ollama"
       ])
     );
-    // ...and never the hidden ones (kept in the catalog, off for new users).
-    for (const hidden of ["cline", "aider", "goose", "amp", "droid", "openrouter"]) {
-      expect(defaultNames).not.toContain(hidden);
+    // ...and never the unverified ones, which were removed from the catalog.
+    for (const removed of ["cline", "aider", "goose", "amp", "droid", "openrouter"]) {
+      expect(defaultNames).not.toContain(removed);
     }
     expect(loaded.config.updates).toMatchObject({
       checkOnStart: false,

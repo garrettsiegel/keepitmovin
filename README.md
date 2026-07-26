@@ -72,9 +72,9 @@ Each tool's limit messages were gathered from its source code, GitHub issues, an
 in with tests. They're verified against reported messages, not live limit events (which can't be
 forced on demand), so keepitmovin keeps a general-purpose limit detector as a backup.
 
-More tools (Cline, Aider, Goose, Amp, Factory Droid, and the OpenRouter gateway) sit in the catalog
-but stay hidden until their limit detection gets the same verification. `kim doctor --all` lists
-them.
+Want another tool? A tool only belongs in a fallback chain if keepitmovin can reliably tell when it's
+blocked, so entries are added once their real limit messages are confirmed from a primary source.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) to add one.
 
 ## Commands
 

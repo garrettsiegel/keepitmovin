@@ -24,16 +24,6 @@ export const getCatalogEntry = (name: string): ProviderCatalogEntry | undefined 
 export const isCatalogHarnessProvider = (entry: ProviderCatalogEntry): boolean =>
   entry.group === "harness" && entry.controllable && HARNESS_TYPES.has(entry.integrationType);
 
-// Hidden entries stay in the catalog so configs that already reference them
-// keep launching, but they are excluded from defaults, the setup wizard, and docs.
-export const isHiddenCatalogEntry = (entry: ProviderCatalogEntry): boolean =>
-  entry.supportLevel === "hidden";
-
-export const isHiddenProviderName = (name: string): boolean => {
-  const entry = getCatalogEntry(name);
-  return entry ? isHiddenCatalogEntry(entry) : false;
-};
-
 export const isHarnessControllable = (provider: Pick<InteractiveProviderConfig, "controllable" | "integrationType">): boolean =>
   (provider.controllable ?? true) && HARNESS_TYPES.has(provider.integrationType);
 
@@ -63,7 +53,7 @@ export const catalogEntryToInteractiveProvider = (
 
 export const getDefaultInteractiveProviders = (): InteractiveProviderConfig[] =>
   PROVIDER_CATALOG
-    .filter((entry) => isCatalogHarnessProvider(entry) && !isHiddenCatalogEntry(entry))
+    .filter(isCatalogHarnessProvider)
     .map(catalogEntryToInteractiveProvider);
 
 export const getDefaultProviderOrder = (): string[] =>
@@ -142,10 +132,7 @@ export const reconcileProviderOrder = (
         !configuredNames.has(provider.name) &&
         !orderNames.has(provider.name) &&
         provider.enabled &&
-        isHarnessControllable(provider) &&
-        // Never auto-add a hidden tool to a user's chain, even if one somehow
-        // arrives enabled — hidden tools only run when explicitly configured.
-        !isHiddenProviderName(provider.name)
+        isHarnessControllable(provider)
     )
     .map((provider) => provider.name);
 

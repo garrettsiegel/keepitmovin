@@ -1,5 +1,5 @@
 import { cancel, isCancel, select } from "@clack/prompts";
-import { isHarnessControllable, isHiddenProviderName } from "../providers/catalog.js";
+import { isHarnessControllable } from "../providers/catalog.js";
 import type { ToolStatus } from "../providers/tool-status.js";
 import type { InteractiveProviderConfig } from "../config/types.js";
 
@@ -74,11 +74,7 @@ export const buildStackOptions = (
   const ready: Array<{ value: string; label: string; hint?: string }> = [];
   const addLater: Array<{ value: string; label: string; hint?: string; disabled: boolean }> = [];
 
-  // Hidden catalog tools stay out of the picker unless this config already has
-  // them enabled — an explicit earlier choice keeps working and stays visible.
-  const selectable = providers.filter(
-    (entry) => isHarnessControllable(entry) && (entry.enabled || !isHiddenProviderName(entry.name))
-  );
+  const selectable = providers.filter(isHarnessControllable);
 
   for (const provider of selectable) {
     const status = statuses.find((entry) => entry.name === provider.name);
@@ -106,7 +102,6 @@ export const buildStackOptions = (
 export const renderCatalogPreview = (statuses: ToolStatus[]): string => {
   const guided = statuses
     .filter((status) => status.group === "guided" || status.controllable === false)
-    .filter((status) => !isHiddenProviderName(status.name))
     .slice(0, 8);
 
   if (guided.length === 0) {

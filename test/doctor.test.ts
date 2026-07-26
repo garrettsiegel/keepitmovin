@@ -65,13 +65,8 @@ describe("runDoctor", () => {
         expect.objectContaining({ name: "opencode", group: "harness", controllable: true }),
         expect.objectContaining({ name: "grok", group: "harness", controllable: true }),
         expect.objectContaining({ name: "cursor", group: "harness", controllable: true }),
-        expect.objectContaining({ name: "aider", group: "harness", controllable: true }),
-        expect.objectContaining({ name: "goose", group: "harness", controllable: true }),
-        expect.objectContaining({ name: "amp", group: "harness", controllable: true }),
-        expect.objectContaining({ name: "droid", group: "harness", controllable: true }),
         expect.objectContaining({ name: "copilot", group: "harness", controllable: true }),
-        expect.objectContaining({ name: "ollama", group: "harness", controllable: true }),
-        expect.objectContaining({ name: "openrouter", group: "guided", integrationType: "external_app" })
+        expect.objectContaining({ name: "ollama", group: "harness", controllable: true })
       ])
     );
   }, 15_000);

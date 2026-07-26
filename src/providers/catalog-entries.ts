@@ -1,4 +1,3 @@
-import { EXTRA_PROVIDER_CATALOG } from "./catalog-hidden.js";
 import { SUPPORTED_MORE_CATALOG } from "./catalog-entries-continued.js";
 import {
   DEFAULT_BOOTSTRAP,
@@ -196,6 +195,5 @@ const SUPPORTED_CORE_CATALOG: ProviderCatalogEntry[] = [
 
 export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   ...SUPPORTED_CORE_CATALOG,
-  ...SUPPORTED_MORE_CATALOG,
-  ...EXTRA_PROVIDER_CATALOG
+  ...SUPPORTED_MORE_CATALOG
 ];
