@@ -36,7 +36,7 @@ export interface FinalizeSessionOptions {
 }
 
 /**
- * Closes out a session: the outcome prompt, the final checkpoint, the handoff
+ * Closes out a session: the final checkpoint, the handoff
  * archive, and the session log. Split out of harness.ts, where runHarness had
  * grown past the project's 250-LOC limit.
  */
