@@ -15,22 +15,14 @@ import {
   splitExplicitTaskArgv,
   type CliOptions
 } from "./cli-options.js";
-import { reasoningEffortSchema, routingTierSchema } from "./routing/config.js";
+import { routingTierSchema } from "./routing/config.js";
 import { installTerminalRestoreHook } from "./ui/restore.js";
-import type { ReasoningEffort, RoutingTier } from "./config/types.js";
+import type { RoutingTier } from "./config/types.js";
 
 const parseTier = (value: string): RoutingTier => {
   const parsed = routingTierSchema.safeParse(value);
   if (!parsed.success) {
     throw new InvalidArgumentError("Use one of: light, standard, deep, max.");
-  }
-  return parsed.data;
-};
-
-const parseEffort = (value: string): ReasoningEffort => {
-  const parsed = reasoningEffortSchema.safeParse(value);
-  if (!parsed.success) {
-    throw new InvalidArgumentError("Use one of: low, medium, high, xhigh, max, ultra.");
   }
   return parsed.data;
 };
@@ -69,10 +61,7 @@ program
   .argument("[task...]", "What you want to work on")
   .option("-c, --config <path>", "Config file path")
   .option("--cwd <path>", "Working directory", process.cwd())
-  .option("--tier <tier>", "Override routing tier", parseTier)
-  .option("--model <model>", "Override the routed model")
-  .option("--effort <effort>", "Override reasoning effort", parseEffort)
-  .option("--no-route", "Disable routing for this run")
+  .option("--tier <tier>", "Route this task at a specific tier: light, standard, deep, or max", parseTier)
   .action(async (task: string[] | undefined, rawOptions: CliOptions | Command, command?: Command) => {
     const options = resolveCommandOptions(rawOptions, command);
     const taskText = explicitTask.task ?? (task?.join(" ").trim() || undefined);
@@ -105,32 +94,36 @@ declareCommand("clear", "Delete local handoff and session files.")
 declareCommand("session", "Show a summary of your most recent session.")
   .action(withOptions(runSessionCommand));
 
+// `kim mcp` serves; `kim mcp install` manages the entry in your other tools.
+// `mcp serve` stays as a hidden alias because that is the exact command already
+// written into every client config the installer has ever touched.
 const mcp = program
   .command("mcp")
-  .description("Serve or install keepitmovin's read-only MCP continuity integration.");
-
-mcp
-  .command("serve")
-  .description("Start the local read-only MCP server over stdio.")
+  .description("Start the read-only MCP continuity server (normally launched by a client).")
   .option("--cwd <path>", "Fallback project directory", process.cwd())
   .action(async (options: { cwd?: string }) => {
     await runMcpServeCommand({ cwd: options.cwd, version });
   });
 
 mcp
-  .command("status")
-  .description("Show MCP support and installation status for every keepitmovin tool.")
-  .action(runMcpStatusCommand);
+  .command("serve", { hidden: true })
+  .option("--cwd <path>", "Fallback project directory", process.cwd())
+  .action(async (options: { cwd?: string }) => {
+    await runMcpServeCommand({ cwd: options.cwd, version });
+  });
 
 mcp
   .command("install")
   .description("Preview and install the MCP entry user-wide in every capable client.")
-  .action(async () => runMcpChangeCommand("install"));
-
-mcp
-  .command("remove")
-  .description("Preview and remove only keepitmovin-owned MCP entries.")
-  .action(async () => runMcpChangeCommand("remove"));
+  .option("--remove", "Remove only keepitmovin-owned MCP entries instead of installing")
+  .option("--status", "Only report each tool's MCP support and installation state")
+  .action(async (options: { remove?: boolean; status?: boolean }) => {
+    if (options.status) {
+      await runMcpStatusCommand();
+      return;
+    }
+    await runMcpChangeCommand(options.remove ? "remove" : "install");
+  });
 
 // Last-resort guard so a crash never leaves the terminal in raw mode.
 installTerminalRestoreHook();

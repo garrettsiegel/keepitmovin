@@ -84,14 +84,12 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
     routing.
   </p>
   <pre><code>kim "Investigate the intermittent auth failure"
-kim --tier deep "Implement the approved plan"
-kim --model gpt-5.6-sol --effort high "Review the payment migration"
-kim --no-route "Use the tool defaults for this task"</code></pre>
+kim --tier deep "Implement the approved plan"</code></pre>
   <p>
     Tiers are <code>light</code>, <code>standard</code>, <code>deep</code>,
-    and <code>max</code>, mapped to appropriate models per tool. Automatic
-    routing never selects <code>ultra</code> effort — pass
-    <code>--effort ultra</code> explicitly when the model supports it.
+    and <code>max</code>, mapped to appropriate models per tool.
+    <code>--tier</code> is the only routing flag: it overrides the classifier
+    for one run. Automatic routing never selects <code>ultra</code> effort.
   </p>
 
   <h2>Tool updates</h2>

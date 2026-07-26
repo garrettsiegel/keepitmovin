@@ -208,14 +208,8 @@ describe("config", () => {
     expect(loaded.config.harness.usageProbe.enabled).toBe(true);
   });
 
-  it("keeps task routing opt-in with local telemetry defaults", () => {
-    expect(defaultConfig().routing).toEqual({
-      enabled: false,
-      promptForTask: true,
-      allowOverride: true,
-      askOutcome: true,
-      telemetry: true
-    });
+  it("keeps task routing opt-in behind a single switch", () => {
+    expect(defaultConfig().routing).toEqual({ enabled: false });
   });
 
   it("accepts a per-provider usageProbe override and rejects unknown kinds", () => {

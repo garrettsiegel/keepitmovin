@@ -5,14 +5,12 @@ import type {
   HarnessSessionLog,
   InteractiveProviderConfig,
   KeepitmovinConfig,
-  RouteDecision,
-  SessionOutcome
+  RouteDecision
 } from "../config/types.js";
 import { getChangedFiles } from "../util/git.js";
 import { appendHandoffCheckpoint, archiveHandoffFile } from "../handoff/file.js";
 import { assessHandoffQuality } from "../handoff/quality.js";
 import { writeSessionLog } from "../session/log.js";
-import { chooseSessionOutcome, type OutcomeSelector } from "../session/outcome.js";
 
 export interface FinalizeSessionOptions {
   cwd: string;
@@ -21,7 +19,6 @@ export interface FinalizeSessionOptions {
   output?: NodeJS.WriteStream;
   task?: string;
   routeDecision?: RouteDecision;
-  outcomeSelector?: OutcomeSelector;
   startedAt: string;
   sessionId: string;
   handoffPath: string;
@@ -60,16 +57,6 @@ export const finalizeSession = async (
     meaningfulTranscriptExcerpt
   } = options;
 
-  let outcome: SessionOutcome = "unknown";
-  if (
-    options.routeDecision &&
-    options.config.routing.telemetry &&
-    options.config.routing.askOutcome &&
-    options.input?.isTTY
-  ) {
-    outcome = await (options.outcomeSelector ?? chooseSessionOutcome)();
-  }
-
   await appendHandoffCheckpoint(options.cwd, options.config, {
     type: "session_end",
     fromProvider: finalProvider,
@@ -83,9 +70,6 @@ export const finalizeSession = async (
         : success
           ? "The final provider process exited cleanly."
           : "The session ended without a clean provider exit.",
-      options.routeDecision && options.config.routing.telemetry
-        ? `Reported task outcome: ${outcome}.`
-        : undefined
     ].filter(Boolean).join(" ")
   });
   const archivePath = await archiveHandoffFile(options.cwd, options.config, sessionId);
@@ -110,9 +94,7 @@ export const finalizeSession = async (
     ...(aborted ? { aborted } : {}),
     changedFiles: await getChangedFiles(options.cwd),
     ...(options.task ? { task: options.task } : {}),
-    ...(options.routeDecision && options.config.routing.telemetry
-      ? { routeDecision: options.routeDecision, outcome }
-      : {}),
+    ...(options.routeDecision ? { routeDecision: options.routeDecision } : {}),
     ...(handoffQuality ? { handoffQuality } : {})
   };
   const sessionLogPath = await writeSessionLog(options.cwd, options.config, log);

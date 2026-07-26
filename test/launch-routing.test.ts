@@ -5,13 +5,17 @@ import { makeTempDir } from "./support/tmp.js";
 
 
 describe("launch routing", () => {
-  it("keeps automatic routing opt-in but honors explicit one-run overrides", () => {
+  it("keeps automatic routing opt-in but honors an explicit --tier", () => {
     const config = defaultConfig();
+    const task = "Implement the plan";
 
-    expect(isRoutingRequested({ task: "Implement the plan" }, config, "Implement the plan")).toBe(false);
-    expect(isRoutingRequested({ task: "Implement the plan", tier: "deep" }, config, "Implement the plan")).toBe(true);
-    expect(isRoutingRequested({ task: "Implement the plan", model: "gpt-5.6-sol" }, config, "Implement the plan")).toBe(true);
-    expect(isRoutingRequested({ task: "Implement the plan", tier: "deep", route: false }, config, "Implement the plan")).toBe(false);
+    expect(isRoutingRequested({ task }, config, task)).toBe(false);
+    expect(isRoutingRequested({ task, tier: "deep" }, config, task)).toBe(true);
+    // Routing turned on in config routes without any flag...
+    const routingOn = { ...config, routing: { enabled: true } };
+    expect(isRoutingRequested({ task }, routingOn, task)).toBe(true);
+    // ...but never without a task to classify.
+    expect(isRoutingRequested({}, routingOn, undefined)).toBe(false);
   });
 
   it("classifies task arguments and applies a CLI tier override", async () => {
@@ -26,12 +30,10 @@ describe("launch routing", () => {
     expect(overridden).toMatchObject({ tier: "deep", source: "tier_override" });
   });
 
-  it("records explicit model and effort selection as an override", async () => {
+  it("does not route at all when routing is off and no tier was asked for", async () => {
     const cwd = await makeTempDir();
-    const config = defaultConfig();
     const task = "Implement the plan";
 
-    await expect(resolveRouteForLaunch({ task, effort: "xhigh" }, config, cwd, task))
-      .resolves.toMatchObject({ tier: "standard", source: "model_override" });
+    await expect(resolveRouteForLaunch({ task }, defaultConfig(), cwd, task)).resolves.toBeUndefined();
   });
 });

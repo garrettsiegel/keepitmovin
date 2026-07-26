@@ -39,11 +39,11 @@ import InstallCommand from "../../components/InstallCommand.astro";
   </p>
 
   <h2>Optional: install read-only MCP continuity</h2>
-  <pre><code>kim mcp status
+  <pre><code>kim mcp install --status
 kim mcp install</code></pre>
   <p>
     The installer previews user-wide changes and asks before writing. It adds
     only a read-only keepitmovin server entry and can undo it with
-    <code>kim mcp remove</code>.
+    <code>kim mcp install --remove</code>.
   </p>
 </DocsLayout>

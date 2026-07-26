@@ -4,17 +4,17 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
 
 <DocsLayout title="MCP continuity — keepitmovin docs" description="Expose a sanitized handoff and recent session outcomes to MCP-capable coding tools.">
   <p class="eyebrow">Docs</p><h1>Read-only MCP continuity</h1>
-  <p><code>kim mcp serve</code> exposes two resources for the active project:</p>
+  <p><code>kim mcp</code> exposes two resources for the active project:</p>
   <ul>
     <li><code>keepitmovin://current/handoff</code> — the sanitized live handoff.</li>
     <li><code>keepitmovin://sessions/recent</code> — up to ten summarized outcomes without transcript excerpts.</li>
   </ul>
   <p>Two read-only tools mirror those resources for clients that surface tools more reliably. The server offers no write, shell, switching, or network operation.</p>
   <h2>Install</h2>
-  <pre><code>kim mcp status
+  <pre><code>kim mcp install --status
 kim mcp install</code></pre>
   <p>The installer supports Claude Code, Codex, Cursor, current Kimi Code, Google Antigravity, OpenCode, Grok Build, and GitHub Copilot CLI. It reports missing and outdated clients without installing or upgrading them. Ollama is not an MCP client.</p>
   <h2>Remove</h2>
-  <pre><code>kim mcp remove</code></pre>
+  <pre><code>kim mcp install --remove</code></pre>
   <p>Removal targets only the entry named <code>keepitmovin</code>. Direct config edits are previewed, backed up, written atomically, and restored if a write fails.</p>
 </DocsLayout>

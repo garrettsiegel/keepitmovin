@@ -1,18 +1,14 @@
-import { cancel, isCancel, select, text } from "@clack/prompts";
+import { cancel, isCancel, text } from "@clack/prompts";
 import { getChangedFiles } from "../util/git.js";
 import { overrideTier, classifyTask } from "./classify.js";
 import type { CliOptions } from "../cli-options.js";
-import type { KeepitmovinConfig, RouteDecision, RoutingTier } from "../config/types.js";
-
-const hasExplicitRouteOverride = (options: CliOptions): boolean =>
-  Boolean(options.tier || options.model || options.effort);
+import type { KeepitmovinConfig, RouteDecision } from "../config/types.js";
 
 export const isRoutingRequested = (
   options: CliOptions,
   config: KeepitmovinConfig,
   task: string | undefined
-): boolean =>
-  Boolean(task) && options.route !== false && (config.routing.enabled || hasExplicitRouteOverride(options));
+): boolean => Boolean(task) && (config.routing.enabled || Boolean(options.tier));
 
 export const resolveTaskForLaunch = async (
   options: CliOptions,
@@ -23,12 +19,7 @@ export const resolveTaskForLaunch = async (
     return provided;
   }
 
-  if (
-    options.route === false ||
-    (!config.routing.enabled && !hasExplicitRouteOverride(options)) ||
-    !config.routing.promptForTask ||
-    !process.stdin.isTTY
-  ) {
+  if ((!config.routing.enabled && !options.tier) || !process.stdin.isTTY) {
     return undefined;
   }
 
@@ -44,26 +35,6 @@ export const resolveTaskForLaunch = async (
   return task.trim();
 };
 
-const chooseInteractiveTier = async (decision: RouteDecision): Promise<RoutingTier | "provider_default"> => {
-  const tiers: RoutingTier[] = ["light", "standard", "deep", "max"];
-  const choice = await select<RoutingTier | "provider_default">({
-    message: `Task route: ${decision.tier} (${decision.reason}). Continue with:`,
-    options: [
-      { label: `${decision.tier} (recommended)`, value: decision.tier },
-      ...tiers
-        .filter((tier) => tier !== decision.tier)
-        .map((tier) => ({ label: tier, value: tier })),
-      { label: "Provider defaults (no routing)", value: "provider_default" }
-    ],
-    initialValue: decision.tier
-  });
-  if (isCancel(choice)) {
-    cancel("keepitmovin canceled.");
-    throw new Error("keepitmovin canceled.");
-  }
-  return choice;
-};
-
 export const resolveRouteForLaunch = async (
   options: CliOptions,
   config: KeepitmovinConfig,
@@ -74,32 +45,8 @@ export const resolveRouteForLaunch = async (
     return undefined;
   }
 
-  let decision = classifyTask({ task: task ?? "", changedFiles: await getChangedFiles(cwd) });
-  if (options.tier) {
-    decision = overrideTier(decision, options.tier);
-  } else if (options.model || options.effort) {
-    decision = {
-      ...decision,
-      reason: "explicit model or reasoning override",
-      signals: [...decision.signals, "explicit model or reasoning override"],
-      source: "model_override"
-    };
-  }
-
-  if (
-    config.routing.enabled &&
-    config.routing.allowOverride &&
-    process.stdin.isTTY &&
-    !hasExplicitRouteOverride(options)
-  ) {
-    const selectedTier = await chooseInteractiveTier(decision);
-    if (selectedTier === "provider_default") {
-      return undefined;
-    }
-    if (selectedTier !== decision.tier) {
-      decision = overrideTier(decision, selectedTier);
-    }
-  }
-
-  return decision;
+  // The classifier decides; `--tier` overrides it. keepitmovin no longer asks
+  // you to confirm the route mid-launch — pass `--tier` if you disagree with it.
+  const decision = classifyTask({ task: task ?? "", changedFiles: await getChangedFiles(cwd) });
+  return options.tier ? overrideTier(decision, options.tier) : decision;
 };

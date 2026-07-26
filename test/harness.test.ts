@@ -41,16 +41,14 @@ describe("runHarness — core lifecycle", () => {
       input,
       output: new PassThrough() as unknown as NodeJS.WriteStream,
       task: "Implement the approved plan",
-      routeDecision: classifyTask({ task: "Implement the approved plan" }),
-      outcomeSelector: async () => "completed"
+      routeDecision: classifyTask({ task: "Implement the approved plan" })
     });
 
     expect(launches[0]?.args.slice(0, 4)).toEqual(["--model", "sonnet", "--effort", "medium"]);
     expect(summary.attempts[0]?.route).toMatchObject({ tier: "standard", model: "sonnet" });
-    expect(summary.outcome).toBe("completed");
     expect(summary.handoffQuality).toMatchObject({ taskInitialized: true, narrativeUpdated: false });
     const handoff = await readFile(path.join(cwd, ".keepitmovin", "current", "handoff.md"), "utf8");
-    expect(handoff).toContain("The final provider process exited cleanly. Reported task outcome: completed.");
+    expect(handoff).toContain("The final provider process exited cleanly.");
     expect(handoff).not.toContain("Complete this task:");
   });
 

@@ -25,7 +25,6 @@ import type { CompactionProbeOptions } from "../probes/compaction.js";
 import { classifyTask } from "../routing/classify.js";
 import { resolveProviderRoute } from "../routing/model.js";
 import type { RouteOverrides } from "../routing/model.js";
-import type { OutcomeSelector } from "../session/outcome.js";
 import { finalizeSession } from "./finalize.js";
 export type { PtyFactory, PtyFactoryOptions, PtyProcess } from "../pty/factory.js";
 export interface HarnessOptions {
@@ -44,7 +43,6 @@ export interface HarnessOptions {
   task?: string;
   routeDecision?: RouteDecision;
   routeOverrides?: RouteOverrides;
-  outcomeSelector?: OutcomeSelector;
 }
 const meaningfulTranscriptExcerpt = (
   excerpt: string | undefined,
@@ -139,12 +137,7 @@ export const runHarness = async (
       options.nudgeTiming
     );
     attempts.push(
-      options.config.routing.telemetry
-        ? attempt
-        : (() => {
-            const { route: _route, ...withoutRoute } = attempt;
-            return withoutRoute;
-          })()
+      attempt
     );
 
     if (["timeout", "nonzero_exit", "unknown"].includes(attempt.errorType ?? "")) {
@@ -224,7 +217,6 @@ export const runHarness = async (
     output: options.output,
     task: options.task,
     routeDecision: options.routeDecision,
-    outcomeSelector: options.outcomeSelector,
     startedAt,
     sessionId,
     handoffPath,
