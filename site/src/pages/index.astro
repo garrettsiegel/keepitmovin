@@ -10,6 +10,9 @@ const description =
   "keepitmovin runs your coding agents in one terminal, watches for rate limits, and hands the next tool a structured record of the work.";
 const tallyUrl = import.meta.env.PUBLIC_TALLY_WAITLIST_URL?.trim();
 const tallyConfigured = Boolean(tallyUrl?.match(/^https:\/\/tally\.so\/r\/[A-Za-z0-9]+$/));
+const researchUrl = tallyConfigured
+  ? tallyUrl
+  : "mailto:garrett@garrettsiegel.com?subject=keepitmovin%20product%20research";
 
 // Brand marks — official simple-icons SVG path data (single-color, currentColor,
 // 24×24 viewBox), inlined so there's no runtime dependency. Tools without a clean
@@ -176,26 +179,60 @@ const vs = [
     </div>
   </section>
 
-  <!-- Works-with bar -->
+  <!-- Works-with ticker -->
   <div class="container">
-    <p class="works-bar">
+    <div class="works-rail" data-works-rail>
       <span class="works-label">Works with</span>
-      {
-        tools.map((t) => (
-          <span class="works-item">
-            {t.icon ? (
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d={t.icon} />
-              </svg>
-            ) : (
-              <span class="ticker-mono">{t.mono}</span>
-            )}
-            {t.name}
-          </span>
-        ))
-      }
-    </p>
+      <div class="works-window">
+        <div class="works-track">
+          {
+            [false, true].map((duplicate) => (
+              <ul class="works-list" aria-hidden={duplicate ? "true" : undefined}>
+                {tools.map((t) => (
+                  <li class="works-item">
+                    {t.icon ? (
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d={t.icon} />
+                      </svg>
+                    ) : (
+                      <span class="ticker-mono" aria-hidden="true">{t.mono}</span>
+                    )}
+                    <span>{t.name}</span>
+                  </li>
+                ))}
+              </ul>
+            ))
+          }
+        </div>
+      </div>
+      <button
+        class="works-toggle"
+        type="button"
+        data-works-toggle
+        aria-pressed="false"
+        aria-label="Pause supported tools ticker"
+      >
+        <span data-works-toggle-icon aria-hidden="true">Ⅱ</span>
+      </button>
+    </div>
   </div>
+  <script>
+    document.querySelectorAll<HTMLElement>("[data-works-rail]").forEach((rail) => {
+      const toggle = rail.querySelector<HTMLButtonElement>("[data-works-toggle]");
+      const icon = rail.querySelector<HTMLElement>("[data-works-toggle-icon]");
+      if (!toggle || !icon) return;
+
+      toggle.addEventListener("click", () => {
+        const paused = rail.toggleAttribute("data-paused");
+        toggle.setAttribute("aria-pressed", String(paused));
+        toggle.setAttribute(
+          "aria-label",
+          paused ? "Play supported tools ticker" : "Pause supported tools ticker",
+        );
+        icon.textContent = paused ? "▶" : "Ⅱ";
+      });
+    });
+  </script>
 
   <!-- The handoff -->
   <section class="section">
@@ -324,70 +361,64 @@ const vs = [
   <section class="section" id="pricing">
     <div class="container">
       <div class="section-head">
-        <p class="eyebrow">Pricing</p>
-        <h2>Free today. Help shape what comes next.</h2>
+        <p class="eyebrow">Free and open source</p>
+        <h2>The CLI is free. Pro only happens if it’s useful.</h2>
         <p class="lede">
-          The CLI is open source and free forever. Join Pro early access to
-          tell us which continuity features are worth building.
+          Everything you need to keep agents moving is free forever. No trial,
+          account, or usage cap from keepitmovin.
         </p>
       </div>
       <div class="pricing">
-        <!-- Free -->
-        <div class="price-card">
-          <div class="price-head">
-            <h3>Free</h3>
-            <p class="price">
-              <span class="amount">$0</span><span class="per">forever</span>
+        <article class="offer-card free-offer">
+          <div class="offer-heading">
+            <div>
+              <p class="offer-label">keepitmovin CLI</p>
+              <h3>Everything you need to keep moving.</h3>
+            </div>
+            <p class="offer-price">
+              <span class="amount">$0</span>
+              <span class="per">forever</span>
             </p>
           </div>
-          <p class="price-tagline">The full open-source CLI.</p>
-          <ul class="price-features">
-            <li>All nine tools</li>
-            <li>Unlimited local use</li>
+          <ul class="offer-features">
+            <li>All nine supported tools</li>
+            <li>Unlimited local sessions</li>
+            <li>Automatic structured handoffs</li>
+            <li>Local project files</li>
             <li>MIT licensed</li>
-            <li>Zero config to start</li>
           </ul>
-          <div class="price-cta">
+          <div class="offer-cta">
             <InstallCommand command="npm install -g keepitmovin" />
           </div>
-        </div>
+        </article>
 
-        <!-- Pro -->
-        <div class="price-card featured">
-          <div class="price-head">
-            <h3>Pro <span class="price-badge">coming soon</span></h3>
-            <p class="price">
-              <span class="amount">TBD</span><span class="per">early access</span>
-            </p>
-          </div>
-          <p class="price-tagline">Shape the first paid features.</p>
-          <ul class="price-features">
-            <li>Direct input on the roadmap</li>
-            <li>Launch and research updates</li>
-            <li>First access when Pro is real</li>
-            <li>Early access to new features</li>
+        <article class="offer-card research-offer">
+          <p class="offer-label">Product research</p>
+          <h3>Shape what comes next.</h3>
+          <p class="research-copy">
+            Pro isn’t for sale yet. Tell us where continuity still breaks and
+            which advanced features would actually be worth paying for.
+          </p>
+          <ul class="research-points">
+            <li>Influence what gets built first</li>
+            <li>Join early product conversations</li>
+            <li>Get first access if Pro becomes real</li>
           </ul>
-          <div class="price-cta">
-            {
-              tallyConfigured ? (
-                <iframe
-                  class="tally-embed"
-                  src={`${tallyUrl}?transparentBackground=1`}
-                  title="Join the keepitmovin Pro early-access list"
-                  loading="lazy"
-                  height="360"
-                />
-              ) : (
-                <div class="waitlist-pending" role="status">
-                  <strong>Form setup pending</strong>
-                  <span>Set <code>PUBLIC_TALLY_WAITLIST_URL</code> to the published Tally form URL.</span>
-                </div>
-              )
-            }
-          </div>
-        </div>
+          <a
+            class="btn btn-ghost research-btn"
+            href={researchUrl}
+            target={tallyConfigured ? "_blank" : undefined}
+            rel={tallyConfigured ? "noopener" : undefined}
+          >
+            Join product research <span aria-hidden="true">→</span>
+          </a>
+        </article>
       </div>
-      <p class="form-privacy">Tally processes waitlist responses. Vercel Analytics measures anonymous pageviews and referrers. <a href="/privacy">Privacy details →</a></p>
+      <p class="form-privacy">
+        {tallyConfigured && "Tally processes research responses. "}
+        Vercel Analytics measures anonymous pageviews and referrers.{" "}
+        <a href="/privacy">Privacy details →</a>
+      </p>
     </div>
   </section>
 </BaseLayout>
