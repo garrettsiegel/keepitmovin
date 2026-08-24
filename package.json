@@ -83,9 +83,9 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
-    "@vitest/coverage-v8": "^4.1.10",
-    "tsx": "^4.21.0",
+    "@vitest/coverage-v8": "^4.1.11",
+    "tsx": "^4.23.12",
     "typescript": "~7.0.2",
-    "vitest": "^4.0.15"
+    "vitest": "^4.1.11"
   }
 }
