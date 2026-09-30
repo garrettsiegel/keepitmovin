@@ -39,7 +39,8 @@
       "node-pty"
     ],
     "overrides": {
-      "fast-uri": ">=3.1.4"
+      "fast-uri": ">=4.1.4",
+      "ip-address": ">=10.3.1"
     }
   },
   "engines": {
