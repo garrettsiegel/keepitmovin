@@ -1,9 +1,9 @@
 {
   "harness": {
-    "setupComplete": true,
     "providerOrder": ["claude", "codex", "opencode"]
   },
-  "updates": {
-    "checkOnStart": true
+  "routing": {
+    "enabled": false,
+    "classifier": "local"
   }
 }

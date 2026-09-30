@@ -4,7 +4,6 @@ const RATE_LIMIT_PATTERNS = [
   "rate limit",
   "rate_limit",
   "too many requests",
-  "429",
   "usage limit",
   "limit reached",
   "session limit",
@@ -22,6 +21,8 @@ const QUOTA_PATTERNS = [
   "quota exceeded",
   "quota_exceeded",
   "insufficient quota",
+  // OpenAI's quota/billing error code, passed through raw by several tools.
+  "insufficient_quota",
   "billing quota"
 ];
 
@@ -156,6 +157,12 @@ export const matchLimitPattern = (
   const lower = text.toLowerCase();
 
   for (const group of LIMIT_PATTERN_GROUPS) {
+    // Checked before the phrase list so "429 Too Many Requests" reports the
+    // whole status as its pattern — the prose guard needs to see it head the line.
+    const http429 = group.type === "rate_limit" ? matchHttp429(lower) : undefined;
+    if (http429) {
+      return { type: "rate_limit", pattern: http429 };
+    }
     const pattern = group.patterns.find((candidate) => lower.includes(candidate));
     if (pattern) {
       return { type: group.type, pattern };
@@ -164,6 +171,25 @@ export const matchLimitPattern = (
 
   return undefined;
 };
+
+/**
+ * The HTTP 429 status in `text` (already lowercased), returned as the matched
+ * text so the prose guard can check it heads its line. A bare "429" substring
+ * used to be a rate-limit pattern, which matched line numbers and byte counts
+ * ("Error: foo.ts:1429") — and since that line starts with "error", the prose
+ * guard trusted it and forced a switch.
+ *
+ * Requires `429` as a whole number (not in 1429, 4290, or 0.429) with HTTP
+ * context touching it: "status: 429", "status code 429", "HTTP/1.1 429",
+ * "API Error: 429", "code=429", or the reason phrase "429 Too Many Requests".
+ * The context word must sit right beside the number, so "Error: read 429
+ * bytes" and "line 429" stay unmatched. A bare "429 upstream" with no context
+ * is a deliberate miss: a false switch costs more than a late one.
+ */
+const HTTP_429 =
+  /\b(?:status(?: code)?|http(?:\/[\d.]+)?|error|code)[\s:=(#]{0,3}429(?![\d.])|(?<![\d.])429\s*[-:]?\s*too many requests/;
+
+const matchHttp429 = (text: string): string | undefined => text.match(HTTP_429)?.[0];
 
 /**
  * Returns the first provider-specific limit banner from `patterns` that appears
@@ -206,18 +232,12 @@ export const classifyError = (
 
   const output = stripUsageWarnings(`${stdout}\n${stderr}`).toLowerCase();
 
-  if (QUOTA_PATTERNS.some((pattern) => output.includes(pattern))) {
-    return "quota_exceeded";
+  const match = matchLimitPattern(output);
+  if (match) {
+    return match.type;
   }
 
-  if (RATE_LIMIT_PATTERNS.some((pattern) => output.includes(pattern))) {
-    return "rate_limit";
-  }
-
-  if (
-    AUTH_PATTERNS.some((pattern) => output.includes(pattern)) ||
-    AUTH_EXIT_ONLY_PATTERNS.some((pattern) => output.includes(pattern))
-  ) {
+  if (AUTH_EXIT_ONLY_PATTERNS.some((pattern) => output.includes(pattern))) {
     return "auth_error";
   }
 

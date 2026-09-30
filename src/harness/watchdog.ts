@@ -92,7 +92,8 @@ export const createWatchdogTracker = (options: {
       if (usage.length > 8) usage.shift();
       if (usage.length < 4) return [];
       const rates = usage.slice(1).map((sample, index) => {
-        const before = usage[index]!;
+        const before = usage.at(index);
+        if (!before) return 0;
         const minutes = Math.max((sample.at - before.at) / 60_000, 0.01);
         return ((sample.percent - before.percent) / minutes) * 10;
       });

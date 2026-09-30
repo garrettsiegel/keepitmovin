@@ -22,17 +22,18 @@ pnpm dev -- doctor    # pass args to a specific command
 
 ## Before you open a PR
 
-All three must pass:
+Both must pass:
 
 ```sh
 pnpm build   # tsc -> dist/
-pnpm test    # vitest
 pnpm lint    # tsc --noEmit
 ```
 
+Manually exercise the behavior you changed and describe the check in your PR.
+
 Please:
 
-- Keep changes focused and add tests for new behavior.
+- Keep changes focused and leave a small, repeatable manual check for new behavior.
 - Keep source files under ~250 lines — split a module rather than growing one.
 - Match the surrounding code style (ESM with explicit `.js` import specifiers, `module`/
   `moduleResolution` NodeNext).
@@ -57,7 +58,7 @@ researched from the tool's **source code, GitHub issues, or official docs**. Do 
 plausible-looking strings; if you can't confirm a banner from a primary source, say so in a code
 comment and leave the tool relying on generic detection rather than adding it.
 
-Each new pattern needs a test proving all three cases (see `test/failure-detection.test.ts`):
+Manually verify each new pattern against all three cases:
 
 1. An agent merely *discussing* a limit in prose → no switch.
 2. A percentage usage warning → no switch.
@@ -68,7 +69,7 @@ The failure-detection rules are subtle — read the **Gotchas** section of
 
 ## Releasing
 
-`pnpm release <patch|minor|major|<semver>>` runs build/test/lint, bumps the version, commits and
+`pnpm release <patch|minor|major|<semver>>` runs build/lint, bumps the version, commits and
 tags it, and pushes `main` + tags to origin. Pushing the tag triggers the release workflow, which
 rebuilds from a clean checkout and publishes to npm with provenance — nothing is published from a
 laptop. CI authenticates with npm trusted publishing (OIDC), so no npm token is stored in this repo.
@@ -83,15 +84,12 @@ pnpm release patch --dry-run
 
 ## Reporting bugs and requesting features
 
-Use the issue templates. For bugs, include your OS, `kim --version`, which tool was running,
+Use the issue templates. For bugs, include your OS, `movin --version`, which tool was running,
 and the exact terminal output (redact anything sensitive). Handoff files and session logs under
 `.keepitmovin/` can contain secrets — don't paste them without checking.
 
 ## Security
 
-Please report suspected vulnerabilities privately per [SECURITY.md](./SECURITY.md) rather than in a
-public issue.
-
-## Code of conduct
-
-By participating you agree to the [Code of Conduct](./CODE_OF_CONDUCT.md).
+Report suspected vulnerabilities through a
+[private GitHub advisory](https://github.com/garrettsiegel/keepitmovin/security/advisories/new),
+not a public issue.

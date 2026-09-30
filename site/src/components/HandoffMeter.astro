@@ -1,0 +1,332 @@
+---
+// Hero scene: Claude Code runs out of usage, the handoff card carries the task
+// to Codex, and the task bar never resets. Timeline lives in lib/handoff-meter.ts;
+// `at` values below are cue times in seconds on that timeline.
+const panes = [
+  {
+    name: "claude",
+    label: "Claude Code",
+    lines: [
+      { at: 0.5, text: "⏺ Read(src/auth/refresh.ts)" },
+      { at: 1.3, text: "⏺ Update(src/auth/refresh.ts)" },
+      { at: 2.0, text: "  ⎿ 3 additions, 1 removal", cls: "muted" },
+      { at: 2.8, text: "● Running tests…" },
+      { at: 3.6, text: "  ✓ 24 passed", cls: "ok" },
+      { at: 4.3, text: "⏺ Update(src/auth/rotate.ts)" },
+      { at: 5.2, text: "✗ Usage limit reached · resets 3am", cls: "limit" },
+    ],
+  },
+  {
+    name: "codex",
+    label: "Codex",
+    lines: [
+      { at: 8.5, text: "> Read .keepitmovin/…/handoff.md", cls: "keep" },
+      { at: 9.2, text: "  Picking up: rotate in client", cls: "muted" },
+      { at: 10.0, text: "● Update(src/http/client.ts)" },
+      { at: 10.8, text: "● Running tests…" },
+      { at: 11.5, text: "  ✓ 31 passed", cls: "ok" },
+    ],
+  },
+];
+
+const handoff = [
+  { at: 5.9, key: "Goal", value: "Add refresh-token rotation" },
+  { at: 6.3, key: "Changed", value: "refresh.ts, rotate.ts" },
+  { at: 6.7, key: "Next", value: "Wire rotation into client" },
+];
+---
+
+<figure class="terminal hm" data-hm>
+  <div class="terminal-bar">
+    <span class="terminal-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="terminal-title">movin — ~/acme-api</span>
+    <span class="hm-chip" data-chip>» keepitmovin</span>
+  </div>
+
+  <div class="hm-stage" data-stage aria-hidden="true">
+    <div class="hm-task">
+      <div class="hm-task-head">
+        <span data-task-label>Task · Add refresh-token rotation</span>
+        <span data-task-pct>8%</span>
+      </div>
+      <div class="hm-bar"><i data-task-fill></i></div>
+    </div>
+
+    <div class="hm-panes">
+      {
+        panes.map((p) => (
+          <section class="hm-pane" data-pane={p.name} data-active="false">
+            <header class="hm-pane-head">
+              <span class="hm-tool">{p.label}</span>
+              <span class="hm-status" data-status />
+              <span class="hm-meter" data-meter data-level="ok">
+                <span class="hm-bar"><i data-fill /></span>
+                <span class="hm-pct" data-pct />
+              </span>
+            </header>
+            <div class="hm-lines">
+              {p.lines.map((line) => (
+                <span class={`hm-line ${line.cls ?? ""}`} data-line data-at={line.at} data-text={line.text} />
+              ))}
+            </div>
+          </section>
+        ))
+      }
+    </div>
+
+    <div class="hm-card" data-card>
+      <p class="hm-card-title">handoff.md</p>
+      {
+        handoff.map((row) => (
+          <p class="hm-card-row" data-at={row.at}>
+            <span>{row.key}</span>
+            {row.value}
+          </p>
+        ))
+      }
+    </div>
+  </div>
+
+  <figcaption class="sr-only">
+    Claude Code's usage meter fills to 100% mid-task. keepitmovin packs the goal, changed
+    files, and next step into a handoff file, starts Codex with it, and the task finishes
+    without restarting.
+  </figcaption>
+</figure>
+
+<script>
+  import { mountHandoffMeter } from "../lib/handoff-meter";
+
+  document.querySelectorAll<HTMLElement>("[data-hm]").forEach(mountHandoffMeter);
+</script>
+
+<style>
+  .hm {
+    --warn: #e0a526;
+    --hit: #ef5b4c;
+    --ok: #6fcf8e;
+    max-width: 56rem;
+    margin: 3.25rem auto 0;
+    text-align: left;
+  }
+
+  @media (prefers-color-scheme: light) {
+    .hm {
+      --warn: #a86f00;
+      --hit: #c9311f;
+      --ok: #1f8a4c;
+      --card-shadow: 0 14px 32px rgba(26, 21, 18, 0.14);
+    }
+  }
+
+  .hm-chip {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    transition: color 200ms ease;
+  }
+
+  .hm-chip[data-live="true"] {
+    color: var(--accent);
+  }
+
+  .hm-stage {
+    position: relative;
+    padding: 1.1rem 1.25rem 1.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  .hm-bar {
+    display: block;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    overflow: hidden;
+  }
+
+  .hm-bar i {
+    display: block;
+    height: 100%;
+    background: currentColor;
+    transform-origin: left;
+    transform: scaleX(0);
+  }
+
+  .hm-task {
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .hm-task-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.45rem;
+    color: var(--text);
+  }
+
+  .hm[data-done="true"] .hm-task-head {
+    color: var(--ok);
+  }
+
+  .hm-panes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem;
+  }
+
+  .hm-pane {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--bg-raised);
+    padding: 0.8rem 0.9rem;
+    transition: border-color 250ms ease;
+  }
+
+  .hm-pane[data-active="true"] {
+    border-color: var(--accent-line);
+  }
+
+  .hm-pane-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 0.35rem 0.6rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .hm-tool {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+  }
+
+  .hm-status {
+    justify-self: end;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  .hm-meter {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 3.2ch;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--text-dim);
+  }
+
+  .hm-meter[data-level="warn"] {
+    color: var(--warn);
+  }
+
+  .hm-meter[data-level="hit"] {
+    color: var(--hit);
+  }
+
+  .hm-pct {
+    text-align: right;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hm-lines {
+    min-height: 11.2em;
+    line-height: 1.6;
+    white-space: pre;
+    overflow: hidden;
+  }
+
+  .hm-line {
+    display: block;
+    min-height: 1.6em;
+    color: var(--text);
+  }
+
+  .hm-line[hidden] {
+    display: none;
+  }
+
+  .hm-line.muted {
+    color: var(--text-dim);
+  }
+
+  .hm-line.ok {
+    color: var(--ok);
+  }
+
+  .hm-line.limit {
+    color: var(--hit);
+  }
+
+  .hm-line.keep {
+    color: var(--accent);
+  }
+
+  .hm-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: min(19rem, 80%);
+    padding: 0.8rem 0.95rem;
+    border: 1px solid var(--accent-line);
+    border-radius: 10px;
+    background: var(--bg);
+    box-shadow: var(--card-shadow, 0 18px 40px rgba(0, 0, 0, 0.35));
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  .hm-card p {
+    margin: 0;
+  }
+
+  .hm-card-title {
+    margin-bottom: 0.45rem !important;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .hm-card-row {
+    display: grid;
+    grid-template-columns: 8.5ch 1fr;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .hm-card-row span {
+    color: var(--text-dim);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 640px) {
+    .hm-panes {
+      grid-template-columns: 1fr;
+    }
+
+    .hm-stage {
+      padding: 0.9rem;
+      font-size: 0.72rem;
+    }
+
+    /* Shorter on phones: pin to the newest line so the limit banner shows. */
+    .hm-lines {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 0;
+      height: 6.4em;
+    }
+  }
+</style>

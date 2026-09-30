@@ -1,39 +1,48 @@
-import { cancel, isCancel, text } from "@clack/prompts";
 import { getChangedFiles } from "../util/git.js";
-import { overrideTier, classifyTask } from "./classify.js";
+import { classifyTask, escalateTier, overrideTier, type RouteInput } from "./classify.js";
+import { classifyWithJev } from "./jev.js";
 import type { CliOptions } from "../cli-options.js";
 import type { KeepitmovinConfig, RouteDecision } from "../config/types.js";
 
+const JEV_FALLBACK_SIGNAL = "Jev unavailable; used local classifier";
+
+export const classifyRoute = async (
+  config: KeepitmovinConfig,
+  input: RouteInput
+): Promise<RouteDecision> => {
+  if (config.routing.classifier !== "jev") {
+    return classifyTask(input);
+  }
+
+  const apiKey = process.env.TYPESAFE_API_KEY;
+  const jevDecision = apiKey ? await classifyWithJev(input.task, apiKey) : undefined;
+  if (!jevDecision) {
+    const localDecision = classifyTask(input);
+    return {
+      ...localDecision,
+      signals: [...localDecision.signals, JEV_FALLBACK_SIGNAL]
+    };
+  }
+
+  if ((input.repeatedFailures ?? 0) < 2) {
+    return jevDecision;
+  }
+  return {
+    ...jevDecision,
+    tier: escalateTier(jevDecision.tier),
+    reason: "escalated after repeated failure",
+    signals: [...jevDecision.signals, "escalated after repeated failure"]
+  };
+};
+
 export const isRoutingRequested = (
   options: CliOptions,
-  config: KeepitmovinConfig,
+  config: { routing: Pick<KeepitmovinConfig["routing"], "enabled"> },
   task: string | undefined
 ): boolean => Boolean(task) && (config.routing.enabled || Boolean(options.tier));
 
-export const resolveTaskForLaunch = async (
-  options: CliOptions,
-  config: KeepitmovinConfig
-): Promise<string | undefined> => {
-  const provided = options.task?.trim();
-  if (provided) {
-    return provided;
-  }
-
-  if ((!config.routing.enabled && !options.tier) || !process.stdin.isTTY) {
-    return undefined;
-  }
-
-  const task = await text({
-    message: "What should this session accomplish?",
-    placeholder: "Describe the work to start",
-    validate: (value) => value?.trim() ? undefined : "Enter a task or disable routing for this run."
-  });
-  if (isCancel(task)) {
-    cancel("keepitmovin canceled.");
-    throw new Error("keepitmovin canceled.");
-  }
-  return task.trim();
-};
+export const resolveTaskForLaunch = (options: CliOptions): string | undefined =>
+  options.task?.trim() || undefined;
 
 export const resolveRouteForLaunch = async (
   options: CliOptions,
@@ -45,8 +54,11 @@ export const resolveRouteForLaunch = async (
     return undefined;
   }
 
-  // The classifier decides; `--tier` overrides it. keepitmovin no longer asks
-  // you to confirm the route mid-launch — pass `--tier` if you disagree with it.
-  const decision = classifyTask({ task: task ?? "", changedFiles: await getChangedFiles(cwd) });
-  return options.tier ? overrideTier(decision, options.tier) : decision;
+  // The classifier decides; `--tier` overrides it — and an explicit tier skips the
+  // network classifier entirely. No confirmation prompt; pass `--tier` to override.
+  const input = { task: task ?? "", changedFiles: await getChangedFiles(cwd) };
+  if (options.tier) {
+    return overrideTier(classifyTask(input), options.tier);
+  }
+  return classifyRoute(config, input);
 };

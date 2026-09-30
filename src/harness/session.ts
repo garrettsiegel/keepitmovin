@@ -1,15 +1,12 @@
 import chalk from "chalk";
 import { createBootstrapWriter } from "./bootstrap-input.js";
 import { DEFAULT_TRANSCRIPT_LIMIT_CHARS } from "../config/config-schema.js";
-import type { NudgeTiming } from "../handoff/refresh.js";
 import type { AgentErrorType, AppliedRoute, HarnessAttemptLog, InteractiveProviderConfig, KeepitmovinConfig } from "../config/types.js";
 import { detectExitFailure, detectLiveFailure, getManualSwitchSequence } from "../detection/failure-detection.js";
 import { renderInteractiveLaunch } from "../providers/interactive.js";
-import type { PtyFactory } from "../pty/factory.js";
 import { RollingTranscript } from "./transcript.js";
 import { armSessionWatchers } from "./watchers.js";
-import { formatUsageProbeMessage, resolveUsageProbe, type UsageProbeOptions } from "../probes/usage.js";
-import type { CompactionProbeOptions } from "../probes/compaction.js";
+import { formatUsageProbeMessage, resolveUsageProbe } from "../probes/usage.js";
 import { createHarnessObservers } from "./observers.js";
 import { startHarnessAttempt } from "./attempt.js";
 import { describeSwitchReason } from "../ui/terminal.js";
@@ -25,12 +22,8 @@ export const waitForProvider = async (
   handoffPath: string,
   sessionPrompt: string,
   route: AppliedRoute | undefined,
-  ptyFactory: PtyFactory,
   input: NodeJS.ReadStream | undefined,
-  output: NodeJS.WriteStream | undefined,
-  usageProbeOptions?: UsageProbeOptions,
-  compactionProbeOptions?: CompactionProbeOptions,
-  nudgeTiming?: NudgeTiming
+  output: NodeJS.WriteStream | undefined
 ): Promise<HarnessAttemptLog> => {
   const launch = renderInteractiveLaunch(provider, {
     cwd,
@@ -54,9 +47,7 @@ export const waitForProvider = async (
     startedAt,
     route,
     expectsReceipt: Boolean(handoffPrompt),
-    ptyFactory,
     resolvedProbe,
-    usageProbeOptions,
     output
   });
   if ("attempt" in start) return start.attempt;
@@ -79,14 +70,21 @@ export const waitForProvider = async (
   let idleTimer: NodeJS.Timeout | undefined;
   let cleaned = false;
 
-  const triggerIdleTimeout = (): void => {
-    if (settled) return;
-    detectedError = "timeout";
+  const { kill: killChild, cancel: cancelKillEscalation } = createEscalatingKill(child);
+
+  // Every switch trigger funnels through here so the settle-then-kill order is
+  // written once. Returns false when another trigger already won.
+  const settle = (errorType: AgentErrorType, message: string): boolean => {
+    if (settled) return false;
     settled = true;
-    output?.write(
-      chalk.yellow(`\n\nkeepitmovin saw no activity from ${provider.label} for ${idleTimeoutMs}ms. Pausing this tool...\n`)
-    );
+    detectedError = errorType;
+    output?.write(chalk.yellow(`\n\n${message}\n`));
     killChild();
+    return true;
+  };
+
+  const triggerIdleTimeout = (): void => {
+    settle("timeout", `keepitmovin saw no activity from ${provider.label} for ${idleTimeoutMs}ms. Pausing this tool...`);
   };
 
   const armIdleTimer = (): void => {
@@ -101,30 +99,19 @@ export const waitForProvider = async (
     cwd,
     handoffPath,
     resolvedProbe,
-    nudgeTiming,
-    usageProbeOptions,
     transcriptLength: () => transcript.text().length,
     lastActivityAt: () => lastActivityAt,
     isSettled: () => settled,
     writeToChild: (text) => child.write(text),
     onUsageLimit: (snapshot) => {
-      if (settled || !resolvedProbe) {
-        return;
-      }
-
-      detectedError = "rate_limit";
+      if (settled || !resolvedProbe) return;
       errorDetail = formatUsageProbeMessage(provider.label, snapshot, resolvedProbe.thresholdPercent);
-      settled = true;
-      output?.write(chalk.yellow(`\n\n${errorDetail} Pausing this tool...\n`));
-      killChild();
+      settle("rate_limit", `${errorDetail} Pausing this tool...`);
     },
     onUsageSample: observers.observeUsage,
     startedAt,
-    compactionProbeOptions,
     onCompaction: observers.observeCompaction
   });
-
-  const { kill: killChild, cancel: cancelKillEscalation } = createEscalatingKill(child);
 
   let bootstrap: ReturnType<typeof createBootstrapWriter> | undefined;
 
@@ -138,10 +125,7 @@ export const waitForProvider = async (
       armIdleTimer();
     },
     onManualSwitch: () => {
-      detectedError = "manual_switch";
-      settled = true;
-      output?.write(chalk.yellow("\n\nkeepitmovin manual switch requested. Pausing this tool...\n"));
-      killChild();
+      settle("manual_switch", "keepitmovin manual switch requested. Pausing this tool...");
     },
     // Registering a SIGINT listener suppresses Node's default termination, so
     // without recording the abort the child's kill read back as a clean exit and
@@ -151,8 +135,10 @@ export const waitForProvider = async (
         settled = true;
         detectedError = "aborted";
       }
-      cleanup();
+      // Kill before cleanup: cleanup cancels the SIGKILL escalation, so the
+      // reverse order left a live timer behind.
       killChild();
+      cleanup();
     },
     writeToChild: (data) => child.write(data),
     resizeChild: (cols, rows) => child.resize?.(cols, rows),
@@ -192,19 +178,8 @@ export const waitForProvider = async (
       bootstrap?.onChildData();
 
       if (!detectedError) {
-        detectedError = detectLiveFailure(
-          transcript.excerpt(),
-          provider,
-          config,
-          ignoreTexts
-        );
-        if (detectedError && !settled) {
-          settled = true;
-          output?.write(
-            chalk.yellow(`\n\n${provider.label} looks blocked (${describeSwitchReason(detectedError)}).\n`)
-          );
-          killChild();
-        }
+        const liveError = detectLiveFailure(transcript.excerpt(), provider, ignoreTexts);
+        if (liveError) settle(liveError, `${provider.label} looks blocked (${describeSwitchReason(liveError)}).`);
       }
     });
 
@@ -217,8 +192,8 @@ export const waitForProvider = async (
       const errorType =
         detectedError ??
         (event.exitCode === 0
-          ? detectLiveFailure(transcript.text(), provider, config, ignoreTexts)
-          : detectExitFailure(transcript.text(), provider, config, event.exitCode, ignoreTexts));
+          ? detectLiveFailure(transcript.text(), provider, ignoreTexts)
+          : detectExitFailure(transcript.text(), transcriptExcerpt, provider, event.exitCode, ignoreTexts));
 
       resolve(
         buildAttemptLog(

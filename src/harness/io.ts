@@ -79,7 +79,7 @@ export const attachSessionIo = (options: SessionIoOptions): SessionIo => {
 
   // Only resume a stream that wasn't already flowing, so detach() can safely
   // pause it again. A resumed, ref'd TTY stdin keeps the event loop alive and
-  // would stop `kim` from ever exiting.
+  // would stop `movin` from ever exiting.
   const resumedInput = input !== undefined && input.isPaused?.() !== false;
 
   input?.setRawMode?.(true);
@@ -90,6 +90,9 @@ export const attachSessionIo = (options: SessionIoOptions): SessionIo => {
   output?.on?.("resize", onResize);
   process.once("SIGINT", onAbort);
   process.once("SIGTERM", onAbort);
+  // Closing the terminal window sends SIGHUP; without this the session ended
+  // with no aborted log.
+  process.once("SIGHUP", onAbort);
 
   const detach = (): void => {
     if (detached) {
@@ -105,6 +108,7 @@ export const attachSessionIo = (options: SessionIoOptions): SessionIo => {
     output?.off?.("resize", onResize);
     process.off("SIGINT", onAbort);
     process.off("SIGTERM", onAbort);
+    process.off("SIGHUP", onAbort);
   };
 
   return { flushPendingInput, detach };

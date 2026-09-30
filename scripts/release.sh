@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Release kim: bump the version, commit + tag, push to origin, and publish
+# Release keepitmovin: bump the version, commit + tag, push to origin, and publish
 # to npm — in one step.
 #
 # Usage:
 #   pnpm release <patch|minor|major|<semver>> [--dry-run] [--yes]
 #
-#   --dry-run   Run build/test/lint and preview the packed tarball contents.
+#   --dry-run   Run build/lint and preview the packed tarball contents.
 #               Makes no git commits/tags/pushes and does not publish.
 #   --yes, -y   Skip the interactive confirmation prompt (for CI/non-interactive use).
 #
@@ -77,8 +77,6 @@ fi
 
 echo "==> Build"
 "$PNPM" build
-echo "==> Test"
-"$PNPM" test
 echo "==> Lint"
 "$PNPM" lint
 

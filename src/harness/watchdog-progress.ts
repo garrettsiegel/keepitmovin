@@ -33,6 +33,8 @@ export const startWatchdogProgressProbe = (options: {
       const current = await signature(options.cwd, options.handoffPath);
       if (previous !== undefined && current !== previous) options.onProgress();
       previous = current;
+    } catch {
+      // A failed read is a skipped sample, not a crash: this runs under `void`.
     } finally {
       inFlight = false;
     }

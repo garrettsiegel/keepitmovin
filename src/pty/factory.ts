@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createRequire } from "node:module";
+import { constants as osConstants } from "node:os";
 import process from "node:process";
 import chalk from "chalk";
 import { ensurePtyHelperExecutable } from "./helper.js";
@@ -38,6 +39,7 @@ class ChildProcessPtyAdapter implements PtyProcess {
   readonly #child: ChildProcessWithoutNullStreams;
   #exitListeners: Array<(event: { exitCode: number; signal?: number | NodeJS.Signals }) => void> = [];
   #exited = false;
+  #killRequested = false;
 
   constructor(child: ChildProcessWithoutNullStreams) {
     this.#child = child;
@@ -45,9 +47,12 @@ class ChildProcessPtyAdapter implements PtyProcess {
     // On "exit" the final chunks — often the limit banner itself — can still be
     // in flight, so the attempt would resolve before detection ever saw them.
     this.#child.on("close", (exitCode, signal) => {
-      // A signal-killed child reports exitCode null. Mapping that to 1 invented a
-      // `nonzero_exit` failure (and a spurious switch) out of a clean kill.
-      this.#emitExit(exitCode ?? 0, signal ?? undefined);
+      // A signal-killed child reports exitCode null. A kill keepitmovin sent maps
+      // to 0: mapping it to 1 invented a `nonzero_exit` failure (and a spurious
+      // switch) out of a clean kill. A signal from elsewhere (OOM killer, a user's
+      // `kill -9`) is a real crash and gets the shell's 128+N code.
+      const signalCode = signal && !this.#killRequested ? 128 + (osConstants.signals[signal] ?? 0) : 0;
+      this.#emitExit(exitCode ?? signalCode, signal ?? undefined);
     });
     this.#child.on("error", () => {
       this.#emitExit(127);
@@ -75,6 +80,7 @@ class ChildProcessPtyAdapter implements PtyProcess {
   }
 
   kill(signal?: NodeJS.Signals): void {
+    this.#killRequested = true;
     this.#child.kill(signal);
   }
 
@@ -144,10 +150,11 @@ export const defaultPtyFactory: PtyFactory = (command, args, options) => {
 const KILL_ESCALATION_MS = 5_000;
 
 /**
- * Returns a kill function that escalates to SIGKILL if the child ignores the
- * default SIGTERM. TUI agents commonly trap SIGTERM to run their own shutdown
- * prompt; if such a child never exits, the attempt promise never settles and
- * keepitmovin wedges. Call `cancel` during cleanup to clear the pending timer.
+ * Returns a kill function that escalates to SIGKILL if the child ignores
+ * SIGTERM. TUI agents commonly trap SIGTERM to run their own shutdown prompt;
+ * if such a child never exits, the attempt promise never settles and
+ * keepitmovin wedges. The pending timer clears itself when the child exits, so
+ * a kill issued after the caller's cleanup can't SIGKILL a reused pid.
  */
 export const createEscalatingKill = (
   child: PtyProcess
@@ -161,9 +168,12 @@ export const createEscalatingKill = (
     }
   };
 
+  child.onExit(cancel);
+
   return {
     kill: () => {
-      child.kill();
+      // Explicit: node-pty's no-argument kill() sends SIGHUP, not SIGTERM.
+      child.kill("SIGTERM");
       cancel();
       escalation = setTimeout(() => child.kill("SIGKILL"), KILL_ESCALATION_MS);
       escalation.unref?.();

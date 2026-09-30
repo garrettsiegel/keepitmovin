@@ -5,22 +5,34 @@ import { execa } from "execa";
 
 export type McpClientName =
   | "claude" | "codex" | "cursor" | "kimi" | "antigravity"
-  | "opencode" | "grok" | "copilot" | "ollama";
+  | "opencode" | "pi" | "grok" | "copilot" | "droid" | "amp" | "qwen" | "ollama";
 export type McpClientState =
   | "ready" | "installed" | "missing" | "upgrade_required" | "unsupported" | "failed";
-export type McpClientStrategy = "native" | "json" | "unsupported";
-
-export interface McpClientDefinition {
+interface McpClientBase {
   name: McpClientName;
   label: string;
-  command?: string;
-  strategy: McpClientStrategy;
-  configPath?: (home: string) => string;
-  configRoot?: "mcpServers" | "mcp";
-  nativeAdd?: (serverCommand: string[]) => string[];
-  nativeList?: string[];
-  nativeRemove?: string[];
 }
+
+type NativeMcpClientDefinition = McpClientBase & {
+  strategy: "native";
+  command: string;
+  nativeAdd: (serverCommand: string[]) => string[];
+  nativeList: string[];
+  nativeRemove: string[];
+};
+
+export type JsonMcpClientDefinition = McpClientBase & {
+  strategy: "json";
+  command?: string;
+  configPath: (home: string) => string;
+  // "amp.mcpServers" is one flat key (VS Code-style settings), not a nested path.
+  configRoot: "mcpServers" | "mcp" | "amp.mcpServers";
+};
+
+export type McpClientDefinition =
+  | NativeMcpClientDefinition
+  | JsonMcpClientDefinition
+  | (McpClientBase & { strategy: "unsupported"; command?: string });
 
 export interface McpClientStatus {
   name: McpClientName;
@@ -60,6 +72,12 @@ export const MCP_CLIENTS: McpClientDefinition[] = [
     configPath: (home) => path.join(home, ".config", "opencode", "opencode.json"), configRoot: "mcp"
   },
   {
+    // `pi mcp add` exists, but `pi mcp list` connects to every server and exits 1
+    // if any fails, so the file is the reliable status source.
+    name: "pi", label: "Pi", command: "pi", strategy: "json",
+    configPath: (home) => path.join(home, ".pi", "agent", "mcp.json"), configRoot: "mcpServers"
+  },
+  {
     name: "grok", label: "Grok Build", command: "grok", strategy: "native",
     nativeAdd: (server) => ["mcp", "add", "--scope", "user", "keepitmovin", "--", ...server],
     nativeList: ["mcp", "list"], nativeRemove: ["mcp", "remove", "--scope", "user", "keepitmovin"]
@@ -70,11 +88,23 @@ export const MCP_CLIENTS: McpClientDefinition[] = [
     nativeList: ["mcp", "list"], nativeRemove: ["mcp", "remove", "keepitmovin"]
   },
   {
+    name: "droid", label: "Factory Droid", command: "droid", strategy: "json",
+    configPath: (home) => path.join(home, ".factory", "mcp.json"), configRoot: "mcpServers"
+  },
+  {
+    name: "amp", label: "Amp", command: "amp", strategy: "json",
+    configPath: (home) => path.join(home, ".config", "amp", "settings.json"), configRoot: "amp.mcpServers"
+  },
+  {
+    name: "qwen", label: "Qwen Code", command: "qwen", strategy: "json",
+    configPath: (home) => path.join(home, ".qwen", "settings.json"), configRoot: "mcpServers"
+  },
+  {
     name: "ollama", label: "Ollama", command: "ollama", strategy: "unsupported"
   }
 ];
 
-export type McpCommandRunner = (
+type McpCommandRunner = (
   command: string,
   args: string[]
 ) => Promise<{ exitCode: number; output: string }>;
@@ -85,6 +115,13 @@ export const defaultMcpCommandRunner: McpCommandRunner = async (command, args) =
       reject: false, timeout: 5_000, stdin: "ignore", stdout: "pipe", stderr: "pipe",
       env: { ...process.env, CI: "true" }
     });
+    // A binary that isn't installed comes back as ENOENT with no exit code. It
+    // must read as 127 (not found): mapped to 1, the error text ("Command failed
+    // with ENOENT: claude mcp --help") contains "mcp", so a missing client
+    // reported "ready" and install then failed on it.
+    if ((result as { code?: string }).code === "ENOENT") {
+      return { exitCode: 127, output: `${command}: command not found` };
+    }
     return {
       exitCode: result.exitCode ?? 1,
       output: `${result.stdout}\n${result.stderr}\n${result.shortMessage ?? ""}`.trim()
@@ -126,12 +163,9 @@ const directClientAvailable = async (
   return false;
 };
 
-export const getMcpClientStatuses = async (options: {
-  homeDir?: string;
-  runCommand?: McpCommandRunner;
-} = {}): Promise<McpClientStatus[]> => {
-  const home = options.homeDir ?? os.homedir();
-  const run = options.runCommand ?? defaultMcpCommandRunner;
+export const getMcpClientStatuses = async (): Promise<McpClientStatus[]> => {
+  const home = os.homedir();
+  const run = defaultMcpCommandRunner;
   return Promise.all(MCP_CLIENTS.map(async (definition): Promise<McpClientStatus> => {
     if (definition.strategy === "unsupported") {
       return { ...definition, definition, state: "unsupported", detail: "not an MCP client" };
@@ -140,9 +174,9 @@ export const getMcpClientStatuses = async (options: {
     if (definition.strategy === "json") {
       const available = await directClientAvailable(definition, home, run);
       if (!available) return { ...definition, definition, state: "missing", detail: "client not found" };
-      const file = definition.configPath!(home);
+      const file = definition.configPath(home);
       const config = await readJsonConfig(file);
-      const root = config?.[definition.configRoot!];
+      const root = config?.[definition.configRoot];
       const installed = root && typeof root === "object" && "keepitmovin" in root;
       return {
         ...definition, definition,
@@ -151,7 +185,7 @@ export const getMcpClientStatuses = async (options: {
       };
     }
 
-    const help = await run(definition.command!, ["mcp", "--help"]);
+    const help = await run(definition.command, ["mcp", "--help"]);
     const normalized = help.output.toLowerCase();
     if (help.exitCode === 127 || normalized.includes("cannot find github copilot cli")) {
       return { ...definition, definition, state: "missing", detail: "client not found" };
@@ -163,7 +197,7 @@ export const getMcpClientStatuses = async (options: {
         detail: definition.name === "kimi" ? "installed Kimi version has no MCP command" : "MCP command unavailable"
       };
     }
-    const listed = await run(definition.command!, definition.nativeList!);
+    const listed = await run(definition.command, definition.nativeList);
     const installed = listed.output.toLowerCase().includes("keepitmovin");
     return {
       ...definition, definition,

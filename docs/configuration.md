@@ -2,7 +2,7 @@
 
 keepitmovin is designed to work with no config at all. Everything here is optional.
 
-Settings live in `keepitmovin.config.json` in your project directory. `kim providers` writes it
+Settings live in `keepitmovin.config.json` in your project directory. `movin providers` writes it
 for you; you only need to edit it by hand for the options below. Anything you leave out uses the
 default, so keep your file short — see [`keepitmovin.config.example.json`](../keepitmovin.config.example.json).
 
@@ -16,7 +16,42 @@ default, so keep your file short — see [`keepitmovin.config.example.json`](../
 }
 ```
 
-The order keepitmovin tries your tools in. `kim providers` is the easier way to change it.
+The order keepitmovin tries your tools in. `movin providers` is the easier way to change it.
+
+## Built-in and custom tools
+
+`harness.providers` lists your tools. For a **built-in** tool (Claude Code, Codex, Ollama, …) only
+two fields are yours: `enabled` and `fallbackOn`. Its command, arguments, and limit banners come
+from keepitmovin itself and are re-applied every time the config loads, so a hand edit to them is
+ignored. That keeps a stale or tampered config from changing what a known tool name runs.
+
+Any tool keepitmovin doesn't know is a **custom** tool, and every field is yours:
+
+| Field | Meaning |
+|---|---|
+| `name`, `label` | Id used in `providerOrder`, and the display name. |
+| `command`, `args` | What to run for a fresh session. |
+| `handoffArgs` | What to run when taking over from another tool. Default `["{{handoffPrompt}}"]`. |
+| `enabled` | Include it in the fallback chain. Default `true`. |
+| `limitPatterns` | Exact limit banners the tool prints. Matched only when the banner heads its line, so an agent quoting it in prose won't switch. |
+| `fallbackOn` | Which failures hand off (see below). |
+
+`args` and `handoffArgs` may use `{{cwd}}`, `{{handoffPath}}`, `{{sessionPrompt}}`, and
+`{{handoffPrompt}}`.
+
+Because a custom tool runs an arbitrary command, keepitmovin asks once before trusting a config
+that contains one, and asks again whenever that file changes. Approvals are stored under
+`~/.keepitmovin/` (override the location with the `KEEPITMOVIN_HOME` environment variable).
+
+## Manual switch key
+
+```json
+{ "harness": { "manualSwitchKey": "ctrl-]" } }
+```
+
+The key that hands off to the next tool on demand. One of `ctrl-]` (default), `ctrl-\`, `ctrl-g`,
+or `ctrl-o` — pick another if your tool already uses `Ctrl+]`. Any other value falls back to the
+default.
 
 ## Usage checks
 
@@ -41,7 +76,7 @@ Under `harness.usageProbe`:
 | `pollIntervalMs` | `30000` | How often to re-check while a tool runs. |
 
 A single tool can override the threshold with its own `usageProbe.thresholdPercent` (e.g. set
-Codex to `80` to switch earlier). Run `kim doctor` to see each tool's current 5-hour / weekly usage.
+Codex to `80` to switch earlier). Run `movin doctor` to see each tool's current 5-hour / weekly usage.
 
 ## The handoff file
 
@@ -95,10 +130,10 @@ tool's entry under `harness.providers`.
 
 ## Tool updates
 
-keepitmovin does **not** check your tools for updates by default — starting `kim` never blocks on
+keepitmovin does **not** check your tools for updates by default — starting `movin` never blocks on
 anything. Turn the check on and keepitmovin runs each tool's verified native updater when one exists
-(`claude update`, `codex update`, `kimi upgrade`, `opencode upgrade`, `grok update`,
-`agent update`), asking first. It never guesses an installer for a tool without a verified update
+(`claude update`, `codex update`, `kimi upgrade`, `opencode upgrade`, `pi update self`,
+`grok update`, `agent update`, `droid update`, `amp update`, `qwen update`), asking first. It never guesses an installer for a tool without a verified update
 command — those show up as "add later" with setup guidance instead.
 
 ```json
@@ -115,14 +150,33 @@ command — those show up as "add later" with setup guidance instead.
 
 ## Task routing and model selection
 
-Off by default. Turn it on with `{ "routing": { "enabled": true } }`. When enabled, `kim` asks for a
-task if one wasn't given on the command line, classifies it locally, and picks a model and reasoning
-effort within your saved fallback order. It never changes that order and never makes network calls
-for routing.
+Off by default. When enabled, pass a task on the command line and `movin` picks a model and reasoning
+effort within your saved fallback order. It never changes that order. Running plain `movin` still
+starts immediately without a prompt or routing. The default `local` classifier is deterministic and
+makes no network calls. Old configs without a `classifier` field continue to use it.
+
+```json
+{
+  "routing": {
+    "enabled": true,
+    "classifier": "local"
+  }
+}
+```
+
+Set `classifier` to `"jev"` and export `TYPESAFE_API_KEY` to opt into TypeSafe's Jev classifier.
+Jev receives only the sanitized task text: fenced code blocks, recognizable secrets, absolute
+paths (any leading-slash or Windows drive token), URLs, and email addresses are replaced before
+sending, whitespace is collapsed, and the result is capped at 1,800 characters. The key is read
+only from the environment and is never saved or logged. Requests time out after 2.5 seconds; a
+missing key, timeout, rejected response, or any other failure silently uses the local classifier
+instead. An explicit `--tier` skips Jev entirely. Jev is consulted once at launch and again when
+keepitmovin hands the task to another tool.
 
 ```sh
-kim "Investigate the intermittent auth failure"
-kim --tier deep "Implement the approved plan"
+export TYPESAFE_API_KEY="..."
+movin "Investigate the intermittent auth failure"
+movin --tier deep "Implement the approved plan"
 ```
 
 | Tier | Claude Code | Codex | Typical work |
@@ -134,7 +188,7 @@ kim --tier deep "Implement the approved plan"
 
 GPT-5.6 Codex models are selected only when they appear in the local Codex model cache. If a
 preferred model isn't advertised there, keepitmovin falls back to a broadly available GPT-5.x model.
-Automatic routing never selects `ultra`. `kim session` reports the chosen route and whether the
+Automatic routing never selects `ultra`. `movin session` reports the chosen route and whether the
 handoff narrative was updated.
 
 `--tier` targets the first tool in your fallback order. If keepitmovin later hands off, the next tool
@@ -145,13 +199,13 @@ gets its normal tier mapping rather than a possibly incompatible model name from
 
 ## Read-only MCP continuity
 
-`kim mcp` exposes the current sanitized handoff and up to ten recent session outcomes as MCP
+`movin mcp` exposes the current sanitized handoff and up to ten recent session outcomes as MCP
 resources and read-only tools. It never exposes raw transcript excerpts and provides no write,
 shell, switch, or network operation. The active project comes from the MCP client's workspace roots,
 falling back to the process working directory.
 
-`kim mcp install` detects Claude Code, Codex, Cursor, current Kimi Code, Google Antigravity,
-OpenCode, Grok Build, and GitHub Copilot CLI. It previews user-wide changes and asks once before
+`movin mcp install` detects Claude Code, Codex, Cursor, current Kimi Code, Google Antigravity,
+OpenCode, Pi, Grok Build, GitHub Copilot CLI, Factory Droid, Amp, and Qwen Code. It previews user-wide changes and asks once before
 writing. Direct JSON edits get timestamped backups and atomic writes. Older Kimi releases are
 reported as `upgrade_required`; Ollama is reported as `unsupported` because it is a model runner,
 not an MCP client. keepitmovin never upgrades another tool on your behalf.
@@ -164,7 +218,7 @@ not an MCP client. keepitmovin never upgrades another tool on your behalf.
 .keepitmovin/sessions/            session summaries (start/end time, tools tried, changed files)
 ```
 
-Run `kim clear` any time you want to wipe these.
+Run `movin clear` any time you want to wipe these.
 
 > Handoff files and session logs capture task text, terminal output, and repository metadata, which
 > can contain secrets. Treat them as sensitive. keepitmovin writes a `.keepitmovin/.gitignore` so

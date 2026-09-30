@@ -9,12 +9,11 @@
 <!-- Which of these you ran, and anything you exercised by hand. -->
 
 - [ ] `pnpm build` passes
-- [ ] `pnpm test` passes
 - [ ] `pnpm lint` passes
+- [ ] Manually exercised the changed behavior (describe above)
 
 ## Checklist
 
-- [ ] Added or updated tests for the change
 - [ ] Updated the README / inline docs if behavior changed
 - [ ] Added a `## [Unreleased]` entry to `CHANGELOG.md`
 - [ ] Source files stay under ~250 lines

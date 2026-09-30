@@ -2,7 +2,7 @@
 
 Marketing and docs site for [keepitmovin](https://github.com/garrettsiegel/keepitmovin) — the terminal tool that hands off between AI coding agents when one hits a rate limit.
 
-Built with [Astro](https://astro.build), fully static output (`output: 'static'`), no backend, no SSR, no UI framework. Hand-rolled CSS lives in `src/styles/design-system.css`; the browser JavaScript powers the install-command copy button, hero visuals, waitlist embed, and Vercel Analytics. Type: Instrument Sans for everything, JetBrains Mono for code/eyebrows/terminal — self-hosted via `@fontsource/*`, no Google Fonts. Design direction: quiet monochrome warm-black with the orange accent used sparingly (unabyss.com was the reference); canonical URLs, OG/Twitter cards, JSON-LD, sitemap, and robots.txt are wired to `https://www.keepitmovin.dev`.
+Built with [Astro](https://astro.build), fully static output (`output: 'static'`), no backend, no SSR, no UI framework. Hand-rolled CSS lives in `src/styles/design-system.css`; the browser JavaScript powers the install-command copy button, hero visuals, and Vercel Analytics. Type: Instrument Sans for everything, JetBrains Mono for code/eyebrows/terminal — self-hosted via `@fontsource/*`, no Google Fonts. Design direction: quiet monochrome warm-black with the orange accent used sparingly (unabyss.com was the reference); canonical URLs, OG/Twitter cards, JSON-LD, sitemap, and robots.txt are wired to `https://www.keepitmovin.dev`.
 
 This site lives at `site/` inside the [keepitmovin](https://github.com/garrettsiegel/keepitmovin)
 repo. It is a standalone Astro package with its own `node_modules` — build it from this directory,
@@ -21,26 +21,28 @@ pnpm preview     # serve the built dist/ locally
 
 ## Layout
 
-- `src/pages/index.astro` — landing page (hero + live handoff sim, works-with bar, 3-step how-it-works, comparison split, tools wall, honest limitation, pricing)
+- `src/pages/index.astro` — landing page (hero + handoff scene `HandoffMeter.astro`, also rendered to the README GIF, works-with bar, 3-step how-it-works, comparison split, tools wall, honest limitation)
 - `src/pages/404.astro` — branded not-found page
 - `src/pages/docs/` — docs section: overview, install, quickstart, how handoff works, supported tools, configuration, FAQ (accordion)
 - `src/layouts/BaseLayout.astro` — HTML shell, meta/OG/Twitter/canonical/JSON-LD, glass pill nav, footer card
 - `src/layouts/DocsLayout.astro` — docs shell with sidebar nav and active-page state
 - `src/components/InstallCommand.astro` — install command with copy button
-- `src/components/HandoffSim.astro` — looping typewriter simulation of a limit → handoff → resume
+- `src/components/HandoffMeter.astro` + `src/lib/handoff-meter.ts` — hero scene: usage meter fills, handoff card flies to the next tool, task finishes. One seekable timeline (`render(t)`); honours reduced motion
 - `src/components/HeroFlow.astro` — animated hero backdrop and handoff flow
+- `src/lib/supported-tools.ts` — shared landing-page and docs tool catalog
 - `src/styles/design-system.css` — the whole design system (dark-first, light variant via `prefers-color-scheme`)
 - `public/favicon.svg` — forward-motion glyph
-- `public/opengraph.png` — social card, wired as `og:image` in BaseLayout
+- `public/opengraph-v2.png` — social card, wired as `og:image` in BaseLayout
 - `public/robots.txt` — allow all, points at the sitemap
 
-The live handoff terminal in the hero (`HandoffSim.astro`) replaced the old demo GIF, so there is
-no `demo.gif` to maintain.
+The hero scene is also the source of the README GIF (`public/hero-demo.gif` at the repo root):
+`demo/render-hero-gif.mjs` seeks it frame by frame from `site/dist`. Rebuild the site, then
+re-render the GIF, whenever the scene changes — see `demo/README.md`.
 
 ### OG image
 
-`public/opengraph.png` (1200×630, wordmark + one-line promise on the site background) is served
-as the absolute `og:image` / `twitter:image` (`https://www.keepitmovin.dev/opengraph.png`). Re-render
+`public/opengraph-v2.png` (1200×630, wordmark + one-line promise on the site background) is served
+as the absolute `og:image` / `twitter:image` (`https://www.keepitmovin.dev/opengraph-v2.png`). Re-render
 it if the brand or promise line changes.
 
 ## Deploying

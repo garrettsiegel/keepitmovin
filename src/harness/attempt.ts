@@ -2,10 +2,10 @@ import process from "node:process";
 import chalk from "chalk";
 import type { ProviderLaunch } from "../providers/interactive.js";
 import { formatCommandEcho } from "../providers/interactive.js";
-import type { PtyFactory, PtyProcess } from "../pty/factory.js";
+import { defaultPtyFactory, type PtyProcess } from "../pty/factory.js";
 import type { AppliedRoute, HarnessAttemptLog, InteractiveProviderConfig } from "../config/types.js";
 import { preLaunchUsageGate } from "./watchers.js";
-import type { ResolvedUsageProbe, UsageProbeOptions } from "../probes/usage.js";
+import type { ResolvedUsageProbe } from "../probes/usage.js";
 import { buildAttemptLog } from "./attempt-log.js";
 
 type StartOptions = {
@@ -15,9 +15,7 @@ type StartOptions = {
   startedAt: string;
   route?: AppliedRoute;
   expectsReceipt: boolean;
-  ptyFactory: PtyFactory;
   resolvedProbe?: ResolvedUsageProbe;
-  usageProbeOptions?: UsageProbeOptions;
   output?: NodeJS.WriteStream;
 };
 
@@ -32,7 +30,6 @@ export const startHarnessAttempt = async (
   const gated = await preLaunchUsageGate({
     provider,
     resolvedProbe: options.resolvedProbe,
-    usageProbeOptions: options.usageProbeOptions,
     command: launch.command,
     commandArgs: launch.args,
     startedAt,
@@ -50,7 +47,7 @@ export const startHarnessAttempt = async (
     output?.write(chalk.cyan(`\nStarting ${provider.label}…\n`));
     output?.write(chalk.gray(`Command: ${formatCommandEcho(launch.command, launch.args)}\n\n`));
     try {
-      return { child: options.ptyFactory(launch.command, launch.args, {
+      return { child: defaultPtyFactory(launch.command, launch.args, {
         cwd: options.cwd,
         env: process.env
       }) };

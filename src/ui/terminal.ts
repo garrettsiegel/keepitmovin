@@ -188,11 +188,11 @@ export const renderCommercialBreak = (
   ].join("\n");
 };
 
-export const renderHarnessStart = (providers: InteractiveProviderConfig[]): string => [
+export const renderHarnessStart = (providers: InteractiveProviderConfig[], switchKeyLabel: string): string => [
   "",
   box("keepitmovin", [
     `Fallback order: ${describeProviderChain(providers)}`,
-    "Press Ctrl+] any time to switch tools yourself.",
+    `Press ${switchKeyLabel} any time to switch tools yourself.`,
     "keepitmovin keeps your handoff file up to date in the background."
   ]),
   ""

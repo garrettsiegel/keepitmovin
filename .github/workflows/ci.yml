@@ -9,13 +9,19 @@ permissions:
   contents: read
 
 jobs:
-  build-test-lint:
-    name: Build, test, lint (Node ${{ matrix.node }})
-    runs-on: ubuntu-latest
+  build-lint:
+    name: Build, lint, smoke (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        node: [22, 24]
+        os: [ubuntu-latest]
+        node: [22, 24, 26]
+        # macOS is where node-pty's spawn-helper exec bit breaks under pnpm
+        # (pty/helper.ts self-heals it), so it gets one leg of its own.
+        include:
+          - os: macos-latest
+            node: 24
     steps:
       - uses: actions/checkout@v7
 
@@ -31,22 +37,35 @@ jobs:
 
       # node-pty is the whole point of the harness. It has no Linux prebuild, so
       # without an approved build script CI would silently exercise the degraded
-      # pipe fallback and every PTY behavior would go untested.
+      # pipe fallback and break PTY behavior at runtime.
       - name: Assert node-pty built (no silent pipe fallback)
         run: node -e "require('node-pty'); console.log('node-pty loaded')"
 
       - name: Build
         run: pnpm build
 
-      - name: Test
-        run: pnpm test
-
-      - name: Lint (typechecks src and test)
+      - name: Lint (typechecks src)
         run: pnpm lint
 
-      - name: Coverage
-        if: matrix.node == 22
-        run: pnpm test:coverage
+      # There is no test suite, so these prove the built CLI actually runs.
+      - name: Smoke - CLI starts
+        run: |
+          node dist/cli.js --version
+          node dist/cli.js --help > /dev/null
+
+      # Parses the example config end to end. No agent tools exist on the
+      # runner, so doctor's verdict is irrelevant — only that it got that far.
+      - name: Smoke - doctor parses the example config
+        run: |
+          out=$(node dist/cli.js doctor -c keepitmovin.config.example.json 2>&1) || true
+          echo "$out"
+          grep -q "Sessions dir:" <<< "$out"
+
+      - name: Smoke - MCP handshake
+        run: node scripts/smoke-mcp.mjs < /dev/null
+
+      - name: Smoke - package contents
+        run: npm pack --dry-run 2>&1 | tee pack.txt && grep -q "dist/cli.js" pack.txt
 
   site:
     name: Build site

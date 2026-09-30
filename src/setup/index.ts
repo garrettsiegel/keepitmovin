@@ -61,7 +61,7 @@ export const runSetupWizard = async (
   }).length;
 
   if (selectableProviderCount === 0) {
-    throw new Error("keepitmovin didn't find any coding tools installed yet. Install one (Claude Code, Codex, …), then run `kim` again.");
+    throw new Error("keepitmovin didn't find any coding tools installed yet. Install one (Claude Code, Codex, …), then run `movin` again.");
   }
 
   intro(chalk.bgCyan.black(" keepitmovin "));
@@ -119,7 +119,7 @@ export const runSetupWizard = async (
 
   const config = applyProviderOrder(startingConfig, providerOrder);
   const configPath = await saveConfig(options.cwd, config, options.configPath);
-  outro(`Saved. Run \`kim\` to start. (config: ${configPath})`);
+  outro(`Saved. Run \`movin\` to start. (config: ${configPath})`);
 
   return { config, configPath };
 };

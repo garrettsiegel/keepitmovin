@@ -16,30 +16,18 @@ import {
 } from "../handoff/file.js";
 import { getEnabledInteractiveProviders } from "../providers/interactive.js";
 import { waitForProvider } from "./session.js";
-import type { NudgeTiming } from "../handoff/refresh.js";
-import { defaultPtyFactory, type PtyFactory } from "../pty/factory.js";
-import { chooseSwitchProvider, type SwitchSelector } from "./switch-menu.js";
+import { chooseSwitchProvider } from "./switch-menu.js";
 import { renderCommercialBreak } from "../ui/terminal.js";
-import type { UsageProbeOptions } from "../probes/usage.js";
-import type { CompactionProbeOptions } from "../probes/compaction.js";
-import { classifyTask } from "../routing/classify.js";
+import { classifyRoute } from "../routing/launch.js";
 import { resolveProviderRoute } from "../routing/model.js";
 import type { RouteOverrides } from "../routing/model.js";
 import { finalizeSession } from "./finalize.js";
-export type { PtyFactory, PtyFactoryOptions, PtyProcess } from "../pty/factory.js";
 export interface HarnessOptions {
   cwd: string;
   config: KeepitmovinConfig;
   providers?: InteractiveProviderConfig[];
-  ptyFactory?: PtyFactory;
-  switchSelector?: SwitchSelector;
   input?: NodeJS.ReadStream;
   output?: NodeJS.WriteStream;
-  // Test-only injection: points provider usage probes at a fixture directory.
-  usageProbeOptions?: UsageProbeOptions;
-  compactionProbeOptions?: CompactionProbeOptions;
-  /** Test-only: overrides the fixed stale-handoff nudge pacing. */
-  nudgeTiming?: NudgeTiming;
   task?: string;
   routeDecision?: RouteDecision;
   routeOverrides?: RouteOverrides;
@@ -80,7 +68,7 @@ export const runHarness = async (
   const maxSwitches = providers.length * 2;
 
   if (providers.length === 0) {
-    throw new Error("No tools are turned on. Run `kim setup` or `kim providers`.");
+    throw new Error("No tools are turned on. Run `movin setup` or `movin providers`.");
   }
 
   options.output?.write(chalk.gray("keepitmovin can't copy a tool's private chat history — the handoff file carries your context to the next tool.\n"));
@@ -103,8 +91,10 @@ export const runHarness = async (
       continue;
     }
 
-    const decision = options.task && options.routeDecision?.source === "classifier"
-      ? classifyTask({
+    const automaticRoute = options.routeDecision?.source === "classifier" ||
+      options.routeDecision?.source === "jev";
+    const decision = options.task && automaticRoute && attempts.length > 0
+      ? await classifyRoute(options.config, {
           task: options.task,
           changedFiles: await getChangedFiles(options.cwd),
           repeatedFailures
@@ -129,12 +119,8 @@ export const runHarness = async (
       handoffPath,
       sessionPrompt,
       route,
-      options.ptyFactory ?? defaultPtyFactory,
       options.input,
-      options.output,
-      options.usageProbeOptions,
-      options.compactionProbeOptions,
-      options.nudgeTiming
+      options.output
     );
     attempts.push(
       attempt
@@ -161,10 +147,7 @@ export const runHarness = async (
     const choices = providers
       .map((candidate, candidateIndex) => ({ provider: candidate, index: candidateIndex }))
       .filter((choice) => choice.index !== index);
-    const selected = await (options.switchSelector ?? chooseSwitchProvider)(
-      choices,
-      attempt.errorType
-    );
+    const selected = await chooseSwitchProvider(choices, attempt.errorType);
 
     await appendHandoffCheckpoint(options.cwd, options.config, {
       type: "tool_switch",

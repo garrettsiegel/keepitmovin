@@ -1,6 +1,7 @@
 import path from "node:path";
 import process from "node:process";
-import { DEFAULT_CONFIG_FILE, DEFAULT_SESSIONS_DIR, loadConfig } from "./config/index.js";
+import { DEFAULT_CONFIG_FILE, loadConfig } from "./config/index.js";
+import { resolveSessionsDir } from "./util/session-log.js";
 import { getGitSnapshot } from "./util/git.js";
 import { assertConfigTrusted } from "./config/trust.js";
 import { getProviderCatalog } from "./providers/catalog.js";
@@ -36,9 +37,6 @@ export interface DoctorSummary {
 export interface DoctorOptions {
   includeAllCatalog?: boolean;
 }
-
-const resolveSessionsDir = (cwd: string, configPath?: string): string =>
-  path.join(configPath ? path.dirname(configPath) : cwd, DEFAULT_SESSIONS_DIR);
 
 export const runDoctor = async (
   cwdInput: string,
@@ -76,11 +74,15 @@ export const runDoctor = async (
   // missing/unreadable session file just yields an undefined snapshot.
   const usageProbes = await Promise.all(
     loaded.config.harness.providers
-      .filter((provider) => provider.enabled && resolveUsageProbe(provider, loaded.config))
-      .map(async (provider) => ({
+      .flatMap((provider) => {
+        if (!provider.enabled) return [];
+        const probe = resolveUsageProbe(provider, loaded.config);
+        return probe ? [{ provider, probe }] : [];
+      })
+      .map(async ({ provider, probe }) => ({
         name: provider.name,
         label: provider.label,
-        snapshot: await readProviderUsage(provider.usageProbe!)
+        snapshot: await readProviderUsage(probe.spec)
       }))
   );
 
@@ -90,7 +92,8 @@ export const runDoctor = async (
     usingDefaultConfig: !loaded.path,
     gitRepo: gitContext.isGitRepo,
     changedFiles: gitContext.changedFiles,
-    sessionsDir: resolveSessionsDir(cwd, loaded.path),
+    // Sessions are written under the working directory, wherever `-c` points.
+    sessionsDir: resolveSessionsDir(cwd, loaded.config),
     interactiveProviderHealth,
     catalogProviderHealth,
     readyInteractiveProviderCount: controllableInteractiveProviderHealth.filter(

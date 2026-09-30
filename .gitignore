@@ -35,8 +35,7 @@ pnpm-debug.log*
 .vscode/
 .claude/settings.local.json
 
-# Internal planning/marketing docs kept out of the public repo
-marketing/
+# Internal planning docs kept out of the public repo
 BRAND.md
 LAUNCH.md
 DESIGN.md

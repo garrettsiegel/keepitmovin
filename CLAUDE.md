@@ -3,7 +3,8 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 keepitmovin is an interactive terminal harness for coding agents. It launches a coding tool
-(Claude Code, Codex, Antigravity, opencode, Grok Build, Cursor Agent, GitHub Copilot CLI,
+(Claude Code, Codex, Antigravity, opencode, Pi, Grok Build, Cursor Agent, GitHub Copilot CLI,
+Factory Droid, Amp, Qwen Code,
 Ollama) inside a PTY, watches its output, and
 on a recognizable limit/failure builds a handoff file and switches to the next configured provider.
 
@@ -18,27 +19,23 @@ around it. Run everything from the repo root:
 ```sh
 pnpm install   # --frozen-lockfile in CI
 pnpm build     # tsc -> dist/
-pnpm test      # vitest run
 pnpm lint      # tsc --noEmit
 pnpm dev       # tsx src/cli.ts (run the CLI without building)
-
-# Single test file (extra args pass through to `vitest run` as filters):
-pnpm test test/errors.test.ts
 ```
 
-Tests live in `test/<module>.test.ts`, one file per `src/` module (vitest defaults, no
-`vitest.config`). Releases go through `pnpm release <patch|minor|major>` (`scripts/release.sh`:
-version bump + tag + push; supports `--dry-run`). Publishing happens in CI from the tag
-(`.github/workflows/release.yml`) with npm provenance — never from a laptop.
+There is no test suite — the owner removed it deliberately; verify behavior by running the CLI
+(`pnpm dev`) against real scenarios instead. Releases go through `pnpm release <patch|minor|major>`
+(`scripts/release.sh`: version bump + tag + push; supports `--dry-run`). Publishing happens in CI
+from the tag (`.github/workflows/release.yml`) with npm provenance — never from a laptop.
 
-Before finishing any task: `build`, `test`, and `lint` must all pass.
+Before finishing any task: `build` and `lint` must both pass.
 
 > When this package is checked out inside the personal monorepo, the surrounding workspace's
 > pnpm quirks apply (see that repo's AGENTS.md). Nothing in this repo depends on them.
 
 ## Architecture
 
-keepitmovin has a single execution mode — the interactive harness (`src/harness/`, the `kim`
+keepitmovin has a single execution mode — the interactive harness (`src/harness/`, the `movin`
 experience). It spawns a provider in a PTY (`node-pty`, with a piped-`child_process` fallback),
 mirrors stdin/stdout, keeps a `RollingTranscript`, watches live output for failures, and hands off
 on failure or `Ctrl+]`.
@@ -53,7 +50,7 @@ entry points. There is no public barrel — keepitmovin ships as a `bin`, not a 
 | `src/detection/` | `failure-detection.ts` (live/post-exit classification, the prose-vs-status-line guard, manual-switch key mapping) and `errors.ts` (error taxonomy + generic pattern matching). |
 | `src/providers/` | **Single source of truth** for every known tool. `catalog.ts` is the public API; `catalog-entries.ts` is the whole `PROVIDER_CATALOG` in one list — **its order is the default fallback chain**, so entry order is behavior. It is pure data and exempt from the 250-LOC cap. Also `catalog-types.ts`, `interactive.ts`, `health.ts`, `tool-status.ts`. Do not scatter provider details elsewhere. |
 | `src/config/` | `index.ts` (load/save/normalize), `config-schema.ts` (the zod contract + defaults — all config shape changes go here), `types.ts` (inferred from the schema), `trust.ts`. |
-| `src/handoff/` | `file.ts` builds and maintains the `.keepitmovin/current/handoff.md` continuity artifact; `refresh.ts` and `quality.ts` refresh mechanical sections and measure whether the task/narrative was recorded; `cleanup.ts` resolves handoff paths and does the destructive `kim clear` work; plus `receipt.ts`, `prompts.ts`. |
+| `src/handoff/` | `file.ts` builds and maintains the `.keepitmovin/current/handoff.md` continuity artifact; `refresh.ts` and `quality.ts` refresh mechanical sections and measure whether the task/narrative was recorded; `cleanup.ts` resolves handoff paths and does the destructive `movin clear` work; plus `receipt.ts`, `prompts.ts`. |
 | `src/probes/` | `usage.ts` and `compaction.ts` — reading a tool's own on-disk usage/compaction state. |
 | `src/routing/` | `classify.ts` (deterministic task classification), `model.ts` (local Codex model discovery), `launch.ts` (launch-time routing). Off by default; the schema lives in `config/routing-schema.ts`. |
 | `src/mcp/` | `server.ts`, `data.ts`, `clients.ts`, `installer.ts` — the read-only MCP server and its installers. |
@@ -62,14 +59,14 @@ entry points. There is no public barrel — keepitmovin ships as a `bin`, not a 
 | `src/ui/` | `terminal.ts` (boxes, status views, switch copy) and `restore.ts` (raw-mode/cursor recovery). |
 | `src/util/` | `paths.ts`, `redact.ts`, `git.ts`, `gitignore-marker.ts` (writes `.keepitmovin/.gitignore`), `session-log.ts` (persist/read validated session telemetry). |
 | `src/commands/` | One file per CLI command; `src/cli.ts` + `src/cli-options.ts` do the `commander` wiring. |
-| `src/doctor.ts` | `kim doctor` — provider health checks (pairs with `providers/health.ts`). |
+| `src/doctor.ts` | `movin doctor` — provider health checks (pairs with `providers/health.ts`). |
 
 ## Beyond `src/`
 
 | Dir | What it is |
 |---|---|
 | `site/` | The keepitmovin.dev website — Astro 7, fully static, no UI framework. **Standalone package (`keepitmovin-site`) with its own `pnpm-lock.yaml`, separate from this package** — run `pnpm install` / `pnpm dev` / `pnpm build` from inside `site/`. Deployed on Vercel (frozen lockfile install, so keep `site/pnpm-lock.yaml` in sync with its `package.json`). Docs pages mirror README wording — re-sync them when README behavior changes. |
-| `demo/` | VHS recording setup for the README hero GIF (`public/kim-demo.gif`). It drives the **real** harness; only the agents are stubs (`agent.sh`), with catalog-avoiding internal names `demo-a`/`demo-b`. See `demo/README.md` before regenerating. |
+| `demo/` | `render-hero-gif.mjs` renders the README hero GIF (`public/hero-demo.gif`) from the homepage scene `site/src/components/HandoffMeter.astro` by seeking its timeline frame by frame in headless Chrome. It is an illustration, not a recording of the harness. See `demo/README.md` before regenerating. |
 | `scripts/` | `release.sh` (the `pnpm release` flow). |
 
 ## Conventions
@@ -86,7 +83,7 @@ entry points. There is no public barrel — keepitmovin ships as a `bin`, not a 
   is behavior, and the split it used to have left a comment pointing at a file that did not exist.
 - Artifacts live under `.keepitmovin/` (handoffs, sessions). Their paths are constants in
   `config/config-schema.ts`, not config — a user-settable handoff path aimed the destructive
-  `kim clear` at arbitrary files.
+  `movin clear` at arbitrary files.
 - CLI commands are wrapped in `withConfig` (`cli-options.ts`), which resolves the cwd, loads the
   config, and turns a throw into one red line plus a non-zero exit code.
 
@@ -109,8 +106,8 @@ entry points. There is no public barrel — keepitmovin ships as a `bin`, not a 
   context (the `92%` and the word `limit` can land on separate lines). Relatedly,
   `RollingTranscript.excerpt()` drops a leading partial line so a mid-line slice can't spoof the
   `startsWith` prose guard. Changing any layer, or the detection scope, can cause unwanted
-  mid-session switches — test all of "prose mentions a limit → no switch", "percentage warning
-  (flat and TUI-wrapped) → no switch", and "real limit banner → switch".
+  mid-session switches — manually check all of "prose mentions a limit → no switch", "percentage
+warning (flat and TUI-wrapped) → no switch", and "real limit banner → switch".
 - **Never run `pnpm install` inside `site/` while this repo sits inside the personal
   monorepo.** `site/` is standalone with its own lockfile, but pnpm walks up, finds the
   monorepo's `pnpm-workspace.yaml`, and installs against *that* root — it rewrites the
@@ -124,17 +121,32 @@ entry points. There is no public barrel — keepitmovin ships as a `bin`, not a 
   `process.cwd()`, not `import.meta.url`.** Astro 7 bundles prerendered pages into
   `dist/.prerender/chunks/`, so a path relative to the module resolves to
   `site/CHANGELOG.md` and the build dies with ENOENT. Keep it cwd-relative.
+- **`429` needs HTTP context.** It is not a substring pattern: `foo.ts:1429` on an `Error:` line
+  passed the prose guard and forced a switch. See `isHttp429` in `detection/errors.ts`. Likewise
+  the post-exit substring classifier only sees the transcript tail — the full transcript goes
+  through the status-line guard.
+- **`execa` reports a missing binary as ENOENT with no exit code.** `mcp/clients.ts` maps it to 127;
+  falling back to exit code 1 made the error text ("Command failed with ENOENT: claude mcp --help")
+  look like a working MCP command. Check `code === "ENOENT"` wherever a runner probes for a tool.
+- **Kill before cleanup.** `cleanup()` cancels the SIGKILL escalation, so any path that kills after
+  cleaning up leaks a timer. `createEscalatingKill` now clears itself on exit, and every switch
+  trigger in `harness/session.ts` goes through one `settle()` helper — keep it that way.
 - **PTY vs. pipe fallback.** When `node-pty` can't load, the harness falls back to a piped
   `child_process` (`pty/factory.ts`) that lacks TTY semantics (no resize, degraded interactivity).
   Guard PTY-only calls (e.g. `resize`) for the fallback.
-- **Prompt transport.** Claude, Codex, Antigravity, opencode, Grok Build and Cursor Agent receive
-  the initial or handoff prompt as launch arguments. Kimi CLI, GitHub Copilot CLI and Ollama use PTY
-  bootstrap paste (their one-shot prompt flags exit after a turn). Keep transport prompts out of
+- **Prompt transport.** Claude, Codex, Antigravity, opencode, Pi, Grok Build, Cursor Agent, Droid
+  and Qwen Code receive the initial or handoff prompt as launch arguments. Kimi CLI, GitHub Copilot
+  CLI, Amp and Ollama use PTY bootstrap paste (their one-shot prompt flags exit after a turn).
+  Watch the flag, not just the position: Qwen Code runs a bare positional prompt one-shot and needs
+  `-i`, and Pi drops to one-shot print mode whenever it isn't on a TTY (so the pipe fallback breaks it). Keep transport prompts out of
   final transcript excerpts when a tool merely echoes its argv.
-- **Routing is local and opt-in.** The classifier must remain deterministic and fail soft when the
-  Codex model cache is missing. Automatic routing never selects `ultra`. `--tier` is the only
-  routing flag; it is validated against `routingTierSchema` before it reaches the classifier.
-- **`kim` must reach the user's tool without asking anything.** Nothing on the launch path may add
+- **Routing is opt-in and local by default.** The deterministic classifier remains the fallback.
+  Jev is a second opt-in: it sends sanitized task text to TypeSafe only when
+  `routing.classifier: "jev"` and `TYPESAFE_API_KEY` are both present, then fails soft to the local
+  classifier without retrying. The key and request/response bodies must never be persisted or
+  logged. Automatic routing never selects `ultra`. `--tier` is the only routing flag; it is
+  validated against `routingTierSchema` before it reaches the classifier.
+- **`movin` must reach the user's tool without asking anything.** Nothing on the launch path may add
   a prompt: not update checks (`updates.checkOnStart` defaults to false for this reason), not a
   chain confirmation, not a routing confirmation. Setup asks one question; every later run asks
   zero. Adding a prompt to the launch path is a regression even when the prompt is useful — put it
@@ -146,8 +158,9 @@ entry points. There is no public barrel — keepitmovin ships as a `bin`, not a 
   `NudgeTiming` in `handoff/refresh.ts`, threaded through `runHarness` as `nudgeTiming`.
 - **Removed config keys and removed provider names must still load.** Old configs are parsed with
   the current schema, which strips unknown keys, and an unrecognized provider name is kept as a
-  user-defined command rather than rejected. `test/config.test.ts` pins this against a real v3
-  config fixture (`test/fixtures/legacy-v3-config.json`); keep the fixture when adding migrations.
+  user-defined command rather than rejected. This was pinned by a v3 fixture in the removed test
+  suite; when touching `config-schema.ts`, verify old-config loading manually with a real v3-style
+  config.
 
 ## When Something Notable Happens
 

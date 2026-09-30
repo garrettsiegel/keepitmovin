@@ -1,0 +1,58 @@
+---
+import { iconBox, supportedTools } from "../lib/supported-tools";
+---
+
+<div class="container">
+  <div class="works-rail" data-works-rail>
+    <span class="works-label">Works with</span>
+    <div class="works-window">
+      <div class="works-track">
+        {
+          [false, true].map((duplicate) => (
+            <ul class="works-list" aria-hidden={duplicate ? "true" : undefined}>
+              {supportedTools.map((tool) => (
+                <li class="works-item">
+                  {tool.icon ? (
+                    <svg viewBox={iconBox(tool, 16).viewBox} aria-hidden="true" style={`width: ${iconBox(tool, 16).width}px`}>
+                      <path d={tool.icon} />
+                    </svg>
+                  ) : (
+                    <span class="ticker-mono" aria-hidden="true">{tool.mono}</span>
+                  )}
+                  <span>{tool.name}</span>
+                </li>
+              ))}
+            </ul>
+          ))
+        }
+      </div>
+    </div>
+    <button
+      class="works-toggle"
+      type="button"
+      data-works-toggle
+      aria-pressed="false"
+      aria-label="Pause supported tools ticker"
+    >
+      <span data-works-toggle-icon aria-hidden="true">Ⅱ</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-works-rail]").forEach((rail) => {
+    const toggle = rail.querySelector<HTMLButtonElement>("[data-works-toggle]");
+    const icon = rail.querySelector<HTMLElement>("[data-works-toggle-icon]");
+    if (!toggle || !icon) return;
+
+    toggle.addEventListener("click", () => {
+      const paused = rail.toggleAttribute("data-paused");
+      toggle.setAttribute("aria-pressed", String(paused));
+      toggle.setAttribute(
+        "aria-label",
+        paused ? "Play supported tools ticker" : "Pause supported tools ticker",
+      );
+      icon.textContent = paused ? "▶" : "Ⅱ";
+    });
+  });
+</script>

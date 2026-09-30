@@ -18,8 +18,28 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
   <h2>Your tools and fallback order</h2>
   <p>
     The config lists your enabled tools and the order keepitmovin falls back
-    through them. Edit both interactively with <code>kim providers</code>
+    through them. Edit both interactively with <code>movin providers</code>
     rather than by hand.
+  </p>
+
+  <h2>Built-in and custom tools</h2>
+  <p>
+    For a built-in tool, only <code>enabled</code> and <code>fallbackOn</code>
+    are yours — its command, arguments and limit banners come from
+    keepitmovin and are re-applied on every load. Any other tool name is a
+    custom tool: set <code>command</code>, <code>args</code>,
+    <code>handoffArgs</code> and <code>limitPatterns</code> yourself.
+    Because a custom tool runs an arbitrary command, keepitmovin asks once
+    before trusting the config, and again whenever the file changes.
+    Approvals live under <code>~/.keepitmovin/</code> (or
+    <code>KEEPITMOVIN_HOME</code>).
+  </p>
+
+  <h2>Manual switch key</h2>
+  <p>
+    <code>harness.manualSwitchKey</code> is the key that hands off on demand:
+    <code>ctrl-]</code> (default), <code>ctrl-\</code>, <code>ctrl-g</code>
+    or <code>ctrl-o</code>. Any other value falls back to the default.
   </p>
 
   <h2>Usage probes</h2>
@@ -55,7 +75,7 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
   </table>
   <p>
     A single tool can override the threshold with its own
-    <code>usageProbe.thresholdPercent</code>. Run <code>kim doctor</code> to
+    <code>usageProbe.thresholdPercent</code>. Run <code>movin doctor</code> to
     see current usage for probed tools.
   </p>
 
@@ -78,13 +98,35 @@ import DocsLayout from "../../layouts/DocsLayout.astro";
 
   <h2>Task routing</h2>
   <p>
-    Off by default. Turn it on with <code>"routing": &#123; "enabled": true &#125;</code>.
-    When enabled, keepitmovin classifies your task locally and picks a model
-    and reasoning effort within your fallback order. It never changes your
-    order and makes no network calls for routing.
+    Off by default. When enabled, pass a task on the command line and
+    keepitmovin picks a model and reasoning effort within your fallback order.
+    It never changes that order. Plain <code>movin</code> still starts immediately
+    without a prompt or routing. The default <code>local</code> classifier is
+    deterministic, makes no network calls, and remains the default for old
+    configs without a classifier field.
   </p>
-  <pre><code>kim "Investigate the intermittent auth failure"
-kim --tier deep "Implement the approved plan"</code></pre>
+  <pre><code>&#123;
+  "routing": &#123;
+    "enabled": true,
+    "classifier": "local"
+  &#125;
+&#125;</code></pre>
+  <p>
+    Set <code>classifier</code> to <code>"jev"</code> and export
+    <code>TYPESAFE_API_KEY</code> to opt into TypeSafe's Jev classifier. Jev
+    receives only sanitized task text: fenced code blocks, recognizable
+    secrets, absolute paths (any leading-slash or Windows drive token),
+    URLs, and email addresses are replaced, whitespace is collapsed, and the
+    result is capped at 1,800 characters. The key is read only from the
+    environment and is never saved or logged. Requests time out after 2.5
+    seconds; a missing key, timeout, rejected response, or any other failure
+    silently falls back to the local classifier. An explicit
+    <code>--tier</code> skips Jev entirely. Jev runs once at launch and again
+    at each tool handoff.
+  </p>
+  <pre><code>export TYPESAFE_API_KEY="..."
+movin "Investigate the intermittent auth failure"
+movin --tier deep "Implement the approved plan"</code></pre>
   <p>
     Tiers are <code>light</code>, <code>standard</code>, <code>deep</code>,
     and <code>max</code>, mapped to appropriate models per tool.
@@ -94,7 +136,7 @@ kim --tier deep "Implement the approved plan"</code></pre>
 
   <h2>Tool updates</h2>
   <p>
-    Off by default, so starting <code>kim</code> never blocks. Turn it on and
+    Off by default, so starting <code>movin</code> never blocks. Turn it on and
     keepitmovin <strong>asks before</strong> running a tool's own verified
     updater. It never guesses an installer. Configure under
     <code>updates</code>:

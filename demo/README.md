@@ -1,57 +1,34 @@
-# keepitmovin demo recording
+# README hero GIF
 
-`public/kim-demo.gif` — the README hero — is recorded with
-[VHS](https://github.com/charmbracelet/vhs).
+`public/hero-demo.gif` is rendered from the homepage hero scene —
+`site/src/components/HandoffMeter.astro`, with its timeline in
+`site/src/lib/handoff-meter.ts` — so the README and keepitmovin.dev always show the
+same story: Claude Code's usage meter fills, the handoff card carries the task to
+Codex, and the task bar never resets.
 
-The recording drives the **real** `kim` harness: provider launch, live limit
-detection, the "commercial break" interstitial, and the handoff-driven relaunch all
-execute for real. Only the two "agents" are simulated — `agent.sh` is a small stub
-that prints believable Claude Code / Codex output, so the demo needs no live tools,
-API keys, or a real rate limit. Provider **labels** ("Claude Code", "Codex") are
-cosmetic; the internal names (`demo-a` / `demo-b`) deliberately avoid the built-in
-catalog so they aren't overridden (see `mergeCatalogInteractiveProviders`).
+It is a designed illustration of the handoff, not a screen recording of the
+harness. The scene's timeline is a pure function of time, so the renderer seeks
+each frame exactly: the loop is seamless and re-renders are byte-for-byte stable.
 
-## Re-record
+## Regenerate
+
+Needs Google Chrome and `ffmpeg` (`brew install ffmpeg`). From the repo root:
 
 ```sh
-brew install vhs                 # one-time — VHS is a Go binary, not an npm dep
-pnpm --filter keepitmovin build     # refresh dist/cli.js
-vhs demo/demo.tape               # writes public/kim-demo.gif
+(cd site && pnpm build)                                       # the renderer serves site/dist
+npm i --no-save --prefix demo playwright-core@1               # one-time; lands in demo/node_modules (gitignored)
+node demo/render-hero-gif.mjs                                 # writes public/hero-demo.gif
 ```
 
-Run from the repo root. The tape sets up a throwaway `/tmp/kim-demo` working
-directory (so on-screen paths stay neutral) and defines a `kim` shell shim
-pointing at the freshly built `dist/cli.js`, then records the session.
+About a minute: 300 frames (15 s at 20 fps) at 960 px wide, dark theme.
 
-## Files
+## Changing the scene
 
-- `demo.tape` — the VHS script (dimensions, theme, timing, keystrokes).
-- `keepitmovin.config.json` — demo config: two stub providers, updates off,
-  `setupComplete: true`.
-- `agent.sh` — the simulated agent output for both roles (`claude`, `codex`).
+Edit the lines and handoff rows in `HandoffMeter.astro` (each has an `at` cue in
+seconds) or the beats in `handoff-meter.ts` (`BEAT`, `DURATION`). If you change
+`DURATION`, change it in `render-hero-gif.mjs` too. Preview any moment without
+rendering by dispatching a seek on the scene in the browser console:
 
-## Recording a version with the real tools
-
-Swap the two providers in `keepitmovin.config.json` for the catalog `claude` / `codex`
-entries and drive a manual `Ctrl+]` switch from the tape instead of the scripted
-limit line. That's non-deterministic and needs both tools installed and
-authenticated, which is why the committed demo uses stubs.
-
-For the launch recording, `real-demo.tape` and `real-keepitmovin.config.json`
-run an authenticated Claude Code → Codex session in
-`/private/tmp/keepitmovin-real-demo`, trigger the visible manual switch, and
-write `marketing/product-hunt-demo.mp4`. The task is intentionally tiny and the
-tape disables usage probes and watchdog warnings so the recording demonstrates
-the handoff itself rather than manufacturing a limit event. The launch video
-uses `product-hunt-narration.txt` as its short voice-over script.
-
-After recording, render and mux the timed macOS voice-over:
-
-```sh
-say -r 175 -o /private/tmp/keepitmovin-product-hunt.aiff -f demo/product-hunt-narration.txt
-ffmpeg -y -i marketing/product-hunt-demo.mp4 \
-  -i /private/tmp/keepitmovin-product-hunt.aiff \
-  -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -af apad -shortest \
-  /private/tmp/product-hunt-demo-with-audio.mp4
-mv /private/tmp/product-hunt-demo-with-audio.mp4 marketing/product-hunt-demo.mp4
+```js
+document.querySelector("[data-hm]").dispatchEvent(new CustomEvent("handoff-meter:seek", { detail: { t: 7.75 } }));
 ```

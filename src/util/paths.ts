@@ -78,7 +78,7 @@ export const ARTIFACT_FILE_MODE = 0o600;
  * rename over the target.
  *
  * A plain writeFile truncates before it writes, so anything reading the file
- * concurrently — the next tool, `kim handoff`, the MCP server — can observe it
+ * concurrently — the next tool, `movin handoff`, the MCP server — can observe it
  * empty or half-written. The handoff file is the artifact the whole handoff
  * depends on, so a torn read there is the worst possible moment to lose it.
  * Rename is atomic within a filesystem, so a reader sees either the old file or

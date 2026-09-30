@@ -11,13 +11,6 @@ interface FileState {
   matchesCwd: boolean;
 }
 
-export interface CompactionProbeOptions {
-  baseDir?: string;
-  pollIntervalMs?: number;
-  homeDir?: string;
-  now?: () => number;
-}
-
 const encodedClaudeProject = (cwd: string): string => cwd.replace(/[^A-Za-z0-9]/g, "-");
 
 const dateParts = (timestamp: number): string[] => {
@@ -29,14 +22,12 @@ const dateParts = (timestamp: number): string[] => {
   ];
 };
 
-export const resolveCompactionProbeDir = (
+const resolveCompactionProbeDir = (
   spec: CompactionProbeSpec,
   cwd: string,
-  startedAtMs: number,
-  options: CompactionProbeOptions = {}
+  startedAtMs: number
 ): string => {
-  if (options.baseDir) return options.baseDir;
-  const home = options.homeDir ?? os.homedir();
+  const home = os.homedir();
   return spec.kind === "claude-transcript"
     ? path.join(home, ".claude", "projects", encodedClaudeProject(cwd))
     : path.join(home, ".codex", "sessions", ...dateParts(startedAtMs));
@@ -80,12 +71,10 @@ export const startCompactionProbe = (args: {
   spec: CompactionProbeSpec;
   cwd: string;
   startedAt: string;
-  options?: CompactionProbeOptions;
   onCompaction: (event: CompactionEventLog) => void | Promise<void>;
 }): (() => void) => {
   const startedAtMs = Date.parse(args.startedAt);
-  const options = args.options ?? {};
-  const directory = resolveCompactionProbeDir(args.spec, args.cwd, startedAtMs, options);
+  const directory = resolveCompactionProbeDir(args.spec, args.cwd, startedAtMs);
   const files = new Map<string, FileState>();
   const seenBuckets = new Set<number>();
   let stopped = false;
@@ -120,14 +109,18 @@ export const startCompactionProbe = (args: {
       const bucket = Math.floor(eventTime / 1_000);
       if (seenBuckets.has(bucket)) continue;
       seenBuckets.add(bucket);
-      const now = options.now?.() ?? Date.now();
+      const now = Date.now();
       if (lastEmittedAt && now - lastEmittedAt < COMPACTION_COOLDOWN_MS) continue;
       lastEmittedAt = now;
-      void args.onCompaction({
-        provider: args.provider,
-        detectedAt: new Date(eventTime).toISOString(),
-        source: args.spec.kind
-      });
+      // The handler refreshes the handoff file; a failed write must not become
+      // an unhandled rejection.
+      void Promise.resolve(
+        args.onCompaction({
+          provider: args.provider,
+          detectedAt: new Date(eventTime).toISOString(),
+          source: args.spec.kind
+        })
+      ).catch(() => {});
     }
   };
 
@@ -147,18 +140,25 @@ export const startCompactionProbe = (args: {
           state.offset = 0;
           state.matchesCwd = false;
         }
-        const chunk = content.subarray(state.offset).toString("utf8");
-        state.offset = content.length;
+        // Only consume through the last newline. A record the tool is still
+        // writing would otherwise be read half-formed, fail to parse, and never
+        // be re-read — silently missing that compaction.
+        const pending = content.subarray(state.offset);
+        const end = pending.lastIndexOf(0x0a);
         files.set(file, state);
-        processLines(chunk.split(/\r?\n/), state);
+        if (end === -1) continue;
+        state.offset += end + 1;
+        processLines(pending.subarray(0, end).toString("utf8").split(/\r?\n/), state);
       }
+    } catch {
+      // Unreadable probe directory: skip this poll. This runs under `void`.
     } finally {
       polling = false;
     }
   };
 
   void poll();
-  const interval = setInterval(() => void poll(), options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS);
+  const interval = setInterval(() => void poll(), DEFAULT_POLL_INTERVAL_MS);
   interval.unref?.();
   return () => {
     stopped = true;

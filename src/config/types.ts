@@ -16,7 +16,7 @@ export interface RouteDecision {
   tier: RoutingTier;
   reason: string;
   signals: string[];
-  source: "classifier" | "tier_override" | "model_override";
+  source: "classifier" | "jev" | "tier_override" | "model_override";
 }
 
 export interface AppliedRoute extends RouteDecision {

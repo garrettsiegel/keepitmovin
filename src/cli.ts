@@ -38,8 +38,8 @@ const program = new Command();
 
 // Every command accepts the same two location flags. Declaring them through one
 // helper keeps them in a single place while still letting commander parse them
-// on either side of the subcommand name (`kim -c a.json doctor` and
-// `kim doctor -c a.json` both work; resolveCommandOptions merges the two).
+// on either side of the subcommand name (`movin -c a.json doctor` and
+// `movin doctor -c a.json` both work; resolveCommandOptions merges the two).
 const declareCommand = (name: string, description: string, hidden = false): Command =>
   program
     .command(name, { hidden })
@@ -53,8 +53,8 @@ const withOptions =
       handler(resolveCommandOptions(rawOptions, command) as T);
 
 program
-  .name("kim")
-  .description("Run your AI coding tools in one terminal, with automatic handoff when one hits a limit. Works with Claude Code, Codex, Kimi CLI, Google Antigravity, opencode, Grok Build, Cursor Agent, GitHub Copilot CLI, and Ollama.")
+  .name("movin")
+  .description("Run your AI coding tools in one terminal, with automatic handoff when one hits a limit. Works with Claude Code, Codex, Kimi CLI, Google Antigravity, opencode, Pi, Grok Build, Cursor Agent, GitHub Copilot CLI, Factory Droid, Amp, Qwen Code, and Ollama.")
   .version(version);
 
 program
@@ -75,7 +75,7 @@ declareCommand("providers", "Change which tools you use and their fallback order
 
 // `setup` is what `providers` used to be called; kept as a hidden alias so the
 // old muscle memory (and any script) keeps working.
-declareCommand("setup", "Alias for `kim providers`.", true)
+declareCommand("setup", "Alias for `movin providers`.", true)
   .option("--all", "Browse every tool, including ones that aren't verified yet")
   .option("--reset", "Start over from the built-in defaults instead of your saved settings")
   .action(withOptions(runProvidersCommand));
@@ -94,7 +94,7 @@ declareCommand("clear", "Delete local handoff and session files.")
 declareCommand("session", "Show a summary of your most recent session.")
   .action(withOptions(runSessionCommand));
 
-// `kim mcp` serves; `kim mcp install` manages the entry in your other tools.
+// `movin mcp` serves; `movin mcp install` manages the entry in your other tools.
 // `mcp serve` stays as a hidden alias because that is the exact command already
 // written into every client config the installer has ever touched.
 const mcp = program

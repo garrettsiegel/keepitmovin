@@ -1,15 +1,13 @@
 import chalk from "chalk";
 import type { CompactionEventLog, HarnessAttemptLog, InteractiveProviderConfig, KeepitmovinConfig } from "../config/types.js";
 import { buildCompactionNudgeMessage, refreshHandoffFile, startHandoffWatcher } from "../handoff/refresh.js";
-import type { NudgeTiming } from "../handoff/refresh.js";
-import { startCompactionProbe, type CompactionProbeOptions } from "../probes/compaction.js";
+import { startCompactionProbe } from "../probes/compaction.js";
 import { buildAttemptLog } from "./attempt-log.js";
 import {
   checkUsageThreshold,
   formatUsageProbeMessage,
   startUsageProbe,
   type ResolvedUsageProbe,
-  type UsageProbeOptions,
   type UsageSnapshot
 } from "../probes/usage.js";
 
@@ -19,7 +17,6 @@ import {
 export const preLaunchUsageGate = async (args: {
   provider: InteractiveProviderConfig;
   resolvedProbe: ResolvedUsageProbe | undefined;
-  usageProbeOptions?: UsageProbeOptions;
   command: string;
   commandArgs: string[];
   startedAt: string;
@@ -30,7 +27,7 @@ export const preLaunchUsageGate = async (args: {
     return undefined;
   }
 
-  const snapshot = await checkUsageThreshold(resolvedProbe, args.usageProbeOptions);
+  const snapshot = await checkUsageThreshold(resolvedProbe);
   if (!snapshot) {
     return undefined;
   }
@@ -54,9 +51,6 @@ export interface SessionWatcherContext {
   cwd: string;
   handoffPath: string;
   resolvedProbe: ResolvedUsageProbe | undefined;
-  /** Test-only: overrides the fixed nudge pacing so tests need not wait minutes. */
-  nudgeTiming?: NudgeTiming;
-  usageProbeOptions?: UsageProbeOptions;
   transcriptLength: () => number;
   lastActivityAt: () => number;
   isSettled: () => boolean;
@@ -64,7 +58,6 @@ export interface SessionWatcherContext {
   onUsageLimit: (snapshot: UsageSnapshot) => void;
   onUsageSample?: (snapshot: UsageSnapshot) => void;
   startedAt: string;
-  compactionProbeOptions?: CompactionProbeOptions;
   onCompaction: (event: CompactionEventLog) => void;
 }
 
@@ -76,7 +69,6 @@ export const armSessionWatchers = (ctx: SessionWatcherContext): (() => void) => 
   if (ctx.resolvedProbe) {
     stops.push(startUsageProbe(
       ctx.resolvedProbe,
-      ctx.usageProbeOptions,
       ctx.onUsageLimit,
       ctx.onUsageSample
     ));
@@ -88,10 +80,12 @@ export const armSessionWatchers = (ctx: SessionWatcherContext): (() => void) => 
       spec: ctx.provider.compactionProbe,
       cwd: ctx.cwd,
       startedAt: ctx.startedAt,
-      options: ctx.compactionProbeOptions,
       onCompaction: async (event) => {
         if (ctx.isSettled()) return;
         await refreshHandoffFile(ctx.cwd, ctx.config, ctx.handoffPath);
+        // The refresh awaited; the session may have settled (and the child died)
+        // meanwhile, so re-check before writing into it.
+        if (ctx.isSettled()) return;
         ctx.writeToChild(buildCompactionNudgeMessage(ctx.handoffPath));
         ctx.onCompaction(event);
       }
@@ -103,7 +97,6 @@ export const armSessionWatchers = (ctx: SessionWatcherContext): (() => void) => 
       cwd: ctx.cwd,
       config: ctx.config,
       handoffPath: ctx.handoffPath,
-      nudgeTiming: ctx.nudgeTiming,
       transcriptLength: ctx.transcriptLength,
       lastActivityAt: ctx.lastActivityAt,
       isSettled: ctx.isSettled,

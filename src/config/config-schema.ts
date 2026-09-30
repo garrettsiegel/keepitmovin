@@ -22,6 +22,9 @@ export const DEFAULT_MAX_DIFF_CHARS = 20_000;
  * this; there is deliberately no global knob, because two places expressing one
  * policy only ever produced configs that disagreed with themselves.
  */
+/** Chords the harness can intercept as "switch tools now". */
+export const MANUAL_SWITCH_KEYS = ["ctrl-]", "ctrl-\\", "ctrl-g", "ctrl-o"] as const;
+
 export const DEFAULT_FALLBACK_ON: readonly z.infer<typeof agentErrorTypeSchema>[] = [
   "rate_limit",
   "quota_exceeded",
@@ -90,7 +93,7 @@ export const interactiveProviderConfigSchema = z.object({
 
 export const keepitmovinConfigSchema = z.object({
   updates: z.object({
-    // Off by default: `kim` should reach your tool without asking anything.
+    // Off by default: `movin` should reach your tool without asking anything.
     // Set `"checkOnStart": true` to have keepitmovin check for tool updates.
     checkOnStart: z.boolean().default(false),
     mode: updateModeSchema.default("prompt"),
@@ -100,7 +103,9 @@ export const keepitmovinConfigSchema = z.object({
   harness: z.object({
     setupComplete: z.boolean().default(false),
     providerOrder: z.array(z.string()).default(getDefaultProviderOrder()),
-    manualSwitchKey: z.string().default("ctrl-]"),
+    // Case-insensitive, like the old free-form string. An unsupported value
+    // falls back to the default rather than failing an old config's load.
+    manualSwitchKey: z.string().toLowerCase().pipe(z.enum(MANUAL_SWITCH_KEYS)).default("ctrl-]").catch("ctrl-]"),
     // 0 disables it. The only way out of a tool that has wedged without
     // printing anything keepitmovin can recognize, so it stays configurable.
     idleTimeoutMs: z.number().int().min(0).default(0),

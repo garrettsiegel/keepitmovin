@@ -79,7 +79,7 @@ export const runDoctorCommand = async (options: CliOptions): Promise<void> => {
     console.log("");
     if (summary.readyInteractiveProviderCount > 0) {
       console.log(chalk.green(`Tools ready to use: ${summary.readyInteractiveProviderCount}`));
-      console.log(chalk.gray("Next: run `kim` to start."));
+      console.log(chalk.gray("Next: run `movin` to start."));
     } else {
       console.log(chalk.red("None of your turned-on tools are installed on your PATH."));
       process.exitCode = 1;

@@ -12,7 +12,7 @@ const routeDecisionSchema = z.object({
   tier: routingTierSchema,
   reason: z.string(),
   signals: z.array(z.string()),
-  source: z.enum(["classifier", "tier_override", "model_override"])
+  source: z.enum(["classifier", "jev", "tier_override", "model_override"])
 });
 
 const appliedRouteSchema = routeDecisionSchema.extend({

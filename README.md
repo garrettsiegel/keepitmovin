@@ -7,7 +7,7 @@
 
 ### Agents hit limits. Your work doesn't.
 
-![keepitmovin automatically hands off from a rate-limited Claude Code to Codex, mid-task](https://raw.githubusercontent.com/garrettsiegel/keepitmovin/main/public/kim-demo.gif)
+![keepitmovin automatically hands off from a rate-limited Claude Code to Codex, mid-task](https://raw.githubusercontent.com/garrettsiegel/keepitmovin/main/public/hero-demo.gif)
 
 **keepitmovin runs your AI coding tools in one terminal, in a fallback order you choose. When one
 hits its usage limit, keepitmovin hands the next tool a structured record of the goal, changes,
@@ -17,10 +17,15 @@ blockers, and next step** — so switching tools doesn't mean starting over.
 
 ```sh
 npm install -g keepitmovin
-kim
+movin
 ```
 
 Or run it without installing anything: `npx keepitmovin`.
+
+Needs Node 22.12+. keepitmovin runs your tools in a real terminal via `node-pty`, which has no
+prebuilt binary for Linux — install a C/C++ toolchain first (`build-essential` and `python3` on
+Debian/Ubuntu). If it can't load, keepitmovin warns and falls back to plain pipes, where
+full-screen tools like Claude Code may not work. `movin doctor` shows your setup.
 
 On first run, keepitmovin detects which tools you have installed and asks one question: which ones
 do you want to use. It suggests a fallback order and offers to change it. Every run after that
@@ -28,7 +33,7 @@ starts immediately.
 
 ## How it works
 
-1. **`kim` starts your first tool** in a real terminal. It looks and feels exactly like running that
+1. **`movin` starts your first tool** in a real terminal. It looks and feels exactly like running that
    tool directly — your keystrokes go straight through.
 2. **keepitmovin watches for trouble** — a usage limit, quota issue, sign-in failure, or a usage
    check showing the tool is nearly spent — while keeping `.keepitmovin/current/handoff.md` updated
@@ -50,7 +55,7 @@ The active tool keeps that file updated as it works, so this costs no extra AI c
 
 ## Supported tools
 
-keepitmovin fully supports nine tools. Each has a verified way to start it, pass it your task, and
+keepitmovin fully supports thirteen tools. Each has a verified way to start it, pass it your task, and
 recognize its exact limit messages — so the handoff fires reliably.
 
 | Tool | How keepitmovin starts it |
@@ -60,17 +65,22 @@ recognize its exact limit messages — so the handoff fires reliably.
 | Kimi CLI (`kimi`) | Starts the app, then hands it the handoff file (its `-p` mode exits after one turn). |
 | Google Antigravity (`agy`) | Uses `agy --prompt-interactive` with your task. |
 | opencode (`opencode`) | Starts with `--prompt`. opencode retries limits forever instead of exiting, so keepitmovin hands off on its retry message. |
+| Pi (`pi`) | Passes your task as a command-line argument. Works with most model providers and subscription logins. |
 | Grok Build (`grok`) | Passes your task as a command-line argument. |
 | Cursor Agent (`agent`) | Passes your task as a command-line argument. Config name is `cursor`. |
 | GitHub Copilot CLI (`copilot`) | Starts the app, then hands it the handoff file. Needs a Copilot subscription. |
-| Ollama (`ollama`) | Local last resort — runs `ollama run llama3.2` (change the model to one you've pulled). A chat model for advice and planning, not a file-editing tool, so it sits last. |
+| Factory Droid (`droid`) | Passes your task as a command-line argument. |
+| Amp (`amp`) | Starts the app, then hands it the handoff file (Amp has no interactive task argument). |
+| Qwen Code (`qwen`) | Starts with `-i` and your task (a plain argument would run once and exit). |
+| Ollama (`ollama`) | Local last resort — runs `ollama run llama3.2` (pull it first with `ollama pull llama3.2`). A chat model for advice and planning, not a file-editing tool, so it sits last. |
 
-Kimi CLI, GitHub Copilot CLI, and Ollama can't take your task as a command-line argument, so
+Kimi CLI, GitHub Copilot CLI, Amp, and Ollama can't take your task as a command-line argument, so
 keepitmovin starts them and pastes a single line pointing at the handoff file. This is automatic.
 
-Each tool's limit messages were gathered from its source code, GitHub issues, and docs, then locked
-in with tests. They're verified against reported messages, not live limit events (which can't be
-forced on demand), so keepitmovin keeps a general-purpose limit detector as a backup.
+Each tool's limit messages were gathered from its source code, GitHub issues, and docs, then
+manually checked against reported messages. Factory Droid and Amp are closed source, so theirs come
+from the text inside their shipped binaries and haven't yet been seen in a real session. Live limit events cannot be forced on demand, so
+keepitmovin keeps a general-purpose limit detector as a backup.
 
 Want another tool? A tool only belongs in a fallback chain if keepitmovin can reliably tell when it's
 blocked, so entries are added once their real limit messages are confirmed from a primary source.
@@ -80,20 +90,25 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) to add one.
 
 | Command | What it does |
 |---|---|
-| `kim` | Start (or resume) your session. |
-| `kim providers` | Change which tools you use and their fallback order (`--all` browses every tool, `--reset` starts over from the defaults). |
-| `kim doctor` | Check your config, tools, and git status (`--all` includes unverified tools). |
-| `kim handoff` | Show the current handoff file's path and a preview. |
-| `kim session` | Show a summary of your most recent session. |
-| `kim clear` | Delete local handoff and session files (`--yes` skips the confirmation). |
-| `kim mcp` | Serve the read-only MCP continuity integration (`kim mcp install` sets it up in your other tools). |
-| `kim --help` | See every command and option. |
+| `movin` | Start (or resume) your session. |
+| `movin providers` | Change which tools you use and their fallback order (`--all` browses every tool, `--reset` starts over from the defaults). |
+| `movin doctor` | Check your config, tools, and git status (`--all` includes unverified tools). |
+| `movin handoff` | Show the current handoff file's path and a preview. |
+| `movin session` | Show a summary of your most recent session. |
+| `movin clear` | Delete local handoff and session files (`--yes` skips the confirmation). |
+| `movin mcp` | Serve the read-only MCP continuity integration (`movin mcp install` sets it up in your other tools). |
+| `movin --help` | See every command and option. |
 
 ## Configuration
 
 keepitmovin works with no config at all. For the optional settings — usage checks, handoff refresh,
 the idle timeout, tool updates, task routing, and MCP — see
 **[docs/configuration.md](./docs/configuration.md)**.
+
+Task routing is local by default. To opt into Jev, set `routing.classifier` to `"jev"` and export
+`TYPESAFE_API_KEY`. Jev receives only sanitized task text (code blocks, recognizable secrets,
+absolute paths, URLs, and emails are removed), times out after 2.5 seconds, and silently falls
+back to the local classifier on any failure. The key is read only from the environment.
 
 ## Safety defaults
 

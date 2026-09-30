@@ -4,6 +4,73 @@ All notable changes to keepitmovin are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Optional Jev task routing via `routing.classifier: "jev"`. Sanitized task text is sent to
+  TypeSafe only when `TYPESAFE_API_KEY` is present; requests time out after 2.5 seconds and silently
+  fall back to the local classifier on any failure.
+
+### Changed
+
+- **The short command is now `movin`** (`movin`, `movin doctor`, `movin providers`, …). `kim`
+  still works as an undocumented alias and will be removed in the next major version;
+  `keepitmovin` remains the full name. Existing `kim mcp install` entries are unaffected — they
+  call the CLI by path, not by command name.
+- Plain `movin` stays prompt-free when routing is enabled; pass a task to route a session.
+- The bin-only npm package no longer ships internal TypeScript source or declaration files.
+- The start banner shows your configured `harness.manualSwitchKey` instead of always "Ctrl+]".
+  The key must be one of `ctrl-]`, `ctrl-\`, `ctrl-g`, `ctrl-o` (case-insensitive); any other
+  value falls back to `ctrl-]` as before.
+- A bare `429` no longer counts as a rate limit — it has to read as an HTTP status (`HTTP 429`,
+  `status: 429`, `API Error: 429`, `429 Too Many Requests`). Line numbers like `foo.ts:1429`,
+  byte counts, and `line 429` used to force a switch.
+- After a non-zero exit, only the transcript tail is substring-scanned for limit wording; older
+  output must be a status line. Earlier prose about rate limits no longer turns an ordinary crash
+  into `rate_limit`. Curated tool banners now also count after exit.
+- `movin --tier` without a task warns that the tier was ignored.
+- `movin mcp` prints a hint when started by hand in a terminal, and the MCP SDK is loaded only for
+  `movin mcp`, so every other command starts faster.
+- CI runs smoke checks on the built CLI (`--version`, `doctor` against the example config, an MCP
+  handshake, `npm pack`), adds Node 26, and adds a macOS leg.
+- The website no longer has a pricing section.
+- New homepage hero and README GIF: Claude Code's usage meter fills, the handoff card carries the
+  task to Codex, and the task bar never resets. Both come from one scene
+  (`site/src/components/HandoffMeter.astro`); `demo/render-hero-gif.mjs` renders the GIF from it,
+  replacing the VHS recording.
+
+- **Four new tools: Pi, Factory Droid, Amp, and Qwen Code** (13 total). Pi follows opencode in
+  the default fallback order; the others sit before Ollama. Existing configs pick them up at the end
+  of their chain. Limit banners come from each tool's source (Pi, Qwen Code) or shipped binary
+  (Droid, Amp). Qwen Code launches with `-i` because a bare prompt runs once and exits; Amp gets the
+  handoff pasted after launch because it has no interactive prompt argument.
+- Detection reads banners drawn inside TUI dialog borders (`│ Out of Credits │`) and treats Qwen
+  Code's `✕` as an error marker. Markdown table rows (`| … |`) still never count as status lines.
+- OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
+- `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
+  Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
+- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+
+### Fixed
+
+- `movin mcp install --status` reported tools that aren't installed as "ready" (the "command not
+  found" error text contains "mcp"), and `install` then failed on them. They now show as missing.
+- Ctrl-C left a 5-second SIGKILL timer running that could fire at an exited (possibly reused) pid.
+  The escalation timer now clears itself when the tool exits.
+- Tools are stopped with an explicit SIGTERM; node-pty's default was SIGHUP.
+- Under the pipe fallback, a tool killed by an outside signal (OOM killer, `kill -9`) was recorded
+  as a clean exit. It now counts as a failure.
+- A pasted prompt that the tool echoed back re-wrapped could stay in the scanned output and trigger
+  a switch on its own text; stripping now tolerates any whitespace between words.
+- Compaction and stale-handoff nudges could be typed into a tool that had already been stopped.
+- A half-written compaction record was skipped forever instead of re-read on the next poll.
+- Closing the terminal (SIGHUP) now records the session as aborted.
+- `movin doctor` reported the sessions folder next to the `-c` config file; sessions are written
+  under the working directory.
+- The docs said Ollama's model could be changed in `args`; built-in tools' arguments are fixed.
+  The configuration docs now describe built-in vs. custom tools and `manualSwitchKey`.
+
 ## [4.0.0] — 2026-07-26
 
 ### Changed — BREAKING
@@ -68,7 +135,22 @@ All notable changes to keepitmovin are documented here. The format is based on
 - `./package.json` is now reachable through the package `exports` map, so tooling that reads it
   (bundlers, version checkers) no longer hits ERR_PACKAGE_PATH_NOT_EXPORTED.
 
+- **Four new tools: Pi, Factory Droid, Amp, and Qwen Code** (13 total). Pi follows opencode in
+  the default fallback order; the others sit before Ollama. Existing configs pick them up at the end
+  of their chain. Limit banners come from each tool's source (Pi, Qwen Code) or shipped binary
+  (Droid, Amp). Qwen Code launches with `-i` because a bare prompt runs once and exits; Amp gets the
+  handoff pasted after launch because it has no interactive prompt argument.
+- Detection reads banners drawn inside TUI dialog borders (`│ Out of Credits │`) and treats Qwen
+  Code's `✕` as an error marker. Markdown table rows (`| … |`) still never count as status lines.
+- OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
+- `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
+  Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
+- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+
 ### Fixed
+
+- `movin mcp install --status` reported tools that aren't installed as "ready" (the "command not
+  found" error text contains "mcp"), and `install` then failed on them. They now show as missing.
 
 - **Ordinary agent prose no longer forces a handoff.** Status words were matched as bare
   substrings, so a line like *"if we hit the rate limit we should back off"* — or any line
@@ -122,7 +204,22 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 ## [2.0.1] — 2026-07-18
 
+- **Four new tools: Pi, Factory Droid, Amp, and Qwen Code** (13 total). Pi follows opencode in
+  the default fallback order; the others sit before Ollama. Existing configs pick them up at the end
+  of their chain. Limit banners come from each tool's source (Pi, Qwen Code) or shipped binary
+  (Droid, Amp). Qwen Code launches with `-i` because a bare prompt runs once and exits; Amp gets the
+  handoff pasted after launch because it has no interactive prompt argument.
+- Detection reads banners drawn inside TUI dialog borders (`│ Out of Credits │`) and treats Qwen
+  Code's `✕` as an error marker. Markdown table rows (`| … |`) still never count as status lines.
+- OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
+- `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
+  Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
+- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+
 ### Fixed
+
+- `movin mcp install --status` reported tools that aren't installed as "ready" (the "command not
+  found" error text contains "mcp"), and `install` then failed on them. They now show as missing.
 
 - **node-pty is now loaded lazily**, so importing the harness never triggers the native module
   load. On a platform where node-pty isn't built, keepitmovin now degrades to the documented
@@ -166,7 +263,22 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 ## [1.6.1] — 2026-07-17
 
+- **Four new tools: Pi, Factory Droid, Amp, and Qwen Code** (13 total). Pi follows opencode in
+  the default fallback order; the others sit before Ollama. Existing configs pick them up at the end
+  of their chain. Limit banners come from each tool's source (Pi, Qwen Code) or shipped binary
+  (Droid, Amp). Qwen Code launches with `-i` because a bare prompt runs once and exits; Amp gets the
+  handoff pasted after launch because it has no interactive prompt argument.
+- Detection reads banners drawn inside TUI dialog borders (`│ Out of Credits │`) and treats Qwen
+  Code's `✕` as an error marker. Markdown table rows (`| … |`) still never count as status lines.
+- OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
+- `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
+  Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
+- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+
 ### Fixed
+
+- `movin mcp install --status` reported tools that aren't installed as "ready" (the "command not
+  found" error text contains "mcp"), and `install` then failed on them. They now show as missing.
 
 - Preserve the executable permission on the published CLI so `kim` runs after a global install.
 
@@ -190,7 +302,22 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 ## [1.3.1] — 2026-07-07
 
+- **Four new tools: Pi, Factory Droid, Amp, and Qwen Code** (13 total). Pi follows opencode in
+  the default fallback order; the others sit before Ollama. Existing configs pick them up at the end
+  of their chain. Limit banners come from each tool's source (Pi, Qwen Code) or shipped binary
+  (Droid, Amp). Qwen Code launches with `-i` because a bare prompt runs once and exits; Amp gets the
+  handoff pasted after launch because it has no interactive prompt argument.
+- Detection reads banners drawn inside TUI dialog borders (`│ Out of Credits │`) and treats Qwen
+  Code's `✕` as an error marker. Markdown table rows (`| … |`) still never count as status lines.
+- OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
+- `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
+  Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
+- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+
 ### Fixed
+
+- `movin mcp install --status` reported tools that aren't installed as "ready" (the "command not
+  found" error text contains "mcp"), and `install` then failed on them. They now show as missing.
 
 - Percentage usage warnings (e.g. "You've used 92% of your limit") are no longer treated as a
   limit-hit event.
@@ -207,7 +334,22 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 - Per-tool usage checks that read a tool's own on-disk usage to switch before hitting the wall.
 
+- **Four new tools: Pi, Factory Droid, Amp, and Qwen Code** (13 total). Pi follows opencode in
+  the default fallback order; the others sit before Ollama. Existing configs pick them up at the end
+  of their chain. Limit banners come from each tool's source (Pi, Qwen Code) or shipped binary
+  (Droid, Amp). Qwen Code launches with `-i` because a bare prompt runs once and exits; Amp gets the
+  handoff pasted after launch because it has no interactive prompt argument.
+- Detection reads banners drawn inside TUI dialog borders (`│ Out of Credits │`) and treats Qwen
+  Code's `✕` as an error marker. Markdown table rows (`| … |`) still never count as status lines.
+- OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
+- `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
+  Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
+- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+
 ### Fixed
+
+- `movin mcp install --status` reported tools that aren't installed as "ready" (the "command not
+  found" error text contains "mcp"), and `install` then failed on them. They now show as missing.
 
 - Pin pnpm in CI to fix a corepack/Node mismatch.
 

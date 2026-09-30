@@ -6,13 +6,14 @@ import { describeProviderChain, getEnabledInteractiveProviders } from "../provid
 import { getSetupState, runSetupWizard } from "../setup/index.js";
 import { resolveRouteForLaunch, resolveTaskForLaunch } from "../routing/launch.js";
 import { renderHarnessStart } from "../ui/terminal.js";
+import { formatManualSwitchKey } from "../detection/failure-detection.js";
 import { assertConfigTrusted } from "../config/trust.js";
 import { ensureProviderFreshness } from "../setup/updates.js";
 import type { CliOptions } from "../cli-options.js";
 import type { KeepitmovinConfig } from "../config/types.js";
 
-// On `kim`, decide which config to launch with. First run → wizard. Otherwise
-// launch straight into the saved chain — `kim providers` is how you change it.
+// On `movin`, decide which config to launch with. First run → wizard. Otherwise
+// launch straight into the saved chain — `movin providers` is how you change it.
 const resolveLaunchConfig = async (
   loadedConfig: KeepitmovinConfig,
   cwd: string,
@@ -24,7 +25,7 @@ const resolveLaunchConfig = async (
 
   const enabled = getEnabledInteractiveProviders(loadedConfig);
   const chain = enabled.length > 0 ? describeProviderChain(enabled) : "(no tools turned on)";
-  console.log(`${chalk.bold("Your fallback order:")} ${chain} ${chalk.gray("(change it with `kim providers`)")}`);
+  console.log(`${chalk.bold("Your fallback order:")} ${chain} ${chalk.gray("(change it with `movin providers`)")}`);
 
   return loadedConfig;
 };
@@ -58,14 +59,14 @@ export const runLaunchCommand = async (options: CliOptions): Promise<void> => {
     }
 
     if (providersAvailableOnPath.length === 0) {
-      throw new Error("None of your chosen tools are installed. Run `kim providers` to pick tools you have installed.");
+      throw new Error("None of your chosen tools are installed. Run `movin providers` to pick tools you have installed.");
     }
 
     const freshness = await ensureProviderFreshness({
       cwd,
       config,
       providers: providersAvailableOnPath,
-      interactive: true
+      interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY)
     });
     const missingProviders = new Set(
       freshness
@@ -75,13 +76,16 @@ export const runLaunchCommand = async (options: CliOptions): Promise<void> => {
     const launchableProviders = providersAvailableOnPath.filter((provider) => !missingProviders.has(provider.name));
 
     if (launchableProviders.length === 0) {
-      throw new Error("None of your chosen tools are installed. Run `kim providers` to pick tools you have installed.");
+      throw new Error("None of your chosen tools are installed. Run `movin providers` to pick tools you have installed.");
     }
 
-    const task = await resolveTaskForLaunch(options, config);
+    const task = resolveTaskForLaunch(options);
+    if (options.tier && !task) {
+      console.log(chalk.yellow(`--tier ${options.tier} ignored: routing needs a task (movin --tier ${options.tier} "your task").`));
+    }
     const routeDecision = await resolveRouteForLaunch(options, config, cwd, task);
 
-    console.log(renderHarnessStart(launchableProviders));
+    console.log(renderHarnessStart(launchableProviders, formatManualSwitchKey(config)));
 
     const summary = await runHarness({
       cwd,

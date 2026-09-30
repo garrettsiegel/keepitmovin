@@ -1,5 +1,0 @@
-[[slnc 3000]] keepitmovin starts Claude Code with a local, shared handoff file.
-[[slnc 2000]] Claude completes the first step and records the current state.
-[[slnc 8000]] When I switch tools, keepitmovin launches Codex with that handoff already loaded.
-[[slnc 4000]] Codex confirms the goal, sees Claude's file, and continues by creating the second file.
-[[slnc 2000]] No private chat history is copied. The continuity comes from a structured handoff that stays with the project.

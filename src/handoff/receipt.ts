@@ -1,8 +1,8 @@
 import stripAnsi from "strip-ansi";
 import type { HandoffReceiptLog } from "../config/types.js";
 
-export const HANDOFF_RECEIPT_PREFIX = "KEEPITMOVIN_RECEIVED ";
-export const HANDOFF_RECEIPT_TIMEOUT_MS = 60_000;
+const HANDOFF_RECEIPT_PREFIX = "KEEPITMOVIN_RECEIVED ";
+const HANDOFF_RECEIPT_TIMEOUT_MS = 60_000;
 const MAX_RECEIPT_FIELD_CHARS = 500;
 const MAX_BUFFER_CHARS = 16_000;
 
@@ -12,9 +12,8 @@ const cleanField = (value: unknown): string | undefined => {
   return cleaned.length > 0 ? cleaned : undefined;
 };
 
-export const parseHandoffReceiptLine = (
-  line: string,
-  receivedAt = new Date().toISOString()
+const parseHandoffReceiptLine = (
+  line: string
 ): HandoffReceiptLog | undefined => {
   const clean = stripAnsi(line).trim();
   if (!clean.startsWith(HANDOFF_RECEIPT_PREFIX)) return undefined;
@@ -26,13 +25,18 @@ export const parseHandoffReceiptLine = (
     const restatedGoal = cleanField(record.goal);
     const nextAction = cleanField(record.next);
     if (!restatedGoal || !nextAction) return undefined;
-    return { status: "received", receivedAt, restatedGoal, nextAction };
+    return {
+      status: "received",
+      receivedAt: new Date().toISOString(),
+      restatedGoal,
+      nextAction
+    };
   } catch {
     return undefined;
   }
 };
 
-export interface HandoffReceiptTracker {
+interface HandoffReceiptTracker {
   append(data: string): HandoffReceiptLog | undefined;
   snapshot(): HandoffReceiptLog;
   stop(): void;
@@ -40,8 +44,6 @@ export interface HandoffReceiptTracker {
 
 export const createHandoffReceiptTracker = (options: {
   expected: boolean;
-  timeoutMs?: number;
-  now?: () => string;
   onReceipt?: (receipt: HandoffReceiptLog) => void;
   onTimeout?: () => void;
 }): HandoffReceiptTracker => {
@@ -58,7 +60,7 @@ export const createHandoffReceiptTracker = (options: {
   let stopped = false;
   const timer = setTimeout(() => {
     if (!stopped && receipt.status === "missing") options.onTimeout?.();
-  }, options.timeoutMs ?? HANDOFF_RECEIPT_TIMEOUT_MS);
+  }, HANDOFF_RECEIPT_TIMEOUT_MS);
   timer.unref?.();
 
   return {
@@ -68,7 +70,7 @@ export const createHandoffReceiptTracker = (options: {
       const lines = buffer.split(/\r?\n/);
       buffer = lines.pop() ?? "";
       for (const line of lines) {
-        const parsed = parseHandoffReceiptLine(line, options.now?.());
+        const parsed = parseHandoffReceiptLine(line);
         if (!parsed) continue;
         receipt = parsed;
         clearTimeout(timer);

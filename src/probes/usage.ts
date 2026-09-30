@@ -3,11 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { DEFAULT_FALLBACK_ON } from "../config/config-schema.js";
 import type { KeepitmovinConfig, InteractiveProviderConfig, UsageProbeSpec } from "../config/types.js";
-// Snapshot of a tool's own reported usage, read from its local session files.
 export interface UsageSnapshot {
-  // max(primary, secondary) — the number compared against the threshold.
   usedPercent: number;
-  // Which window is the binding constraint right now.
   limitingWindow: "primary" | "secondary";
   windowMinutes?: number;
   resetsInSeconds?: number;
@@ -16,11 +13,6 @@ export interface UsageSnapshot {
   sourceFile: string;
 }
 
-export interface UsageProbeOptions {
-  baseDir?: string; // default: path.join(os.homedir(), ".codex")
-  now?: () => Date; // default: () => new Date()
-  maxDaysBack?: number; // default: 7
-}
 interface RawWindow {
   used_percent?: unknown;
   window_minutes?: unknown;
@@ -57,13 +49,15 @@ const parseRateLimitLine = (line: string): Omit<UsageSnapshot, "sourceFile"> | u
   }
 
   const windows: Array<{ window: "primary" | "secondary"; usedPercent: number; raw: RawWindow }> = [];
-  const primaryPercent = asNumber(rateLimits.primary?.used_percent);
-  if (primaryPercent !== undefined) {
-    windows.push({ window: "primary", usedPercent: primaryPercent, raw: rateLimits.primary! });
+  const primary = rateLimits.primary;
+  const primaryPercent = asNumber(primary?.used_percent);
+  if (primary && primaryPercent !== undefined) {
+    windows.push({ window: "primary", usedPercent: primaryPercent, raw: primary });
   }
-  const secondaryPercent = asNumber(rateLimits.secondary?.used_percent);
-  if (secondaryPercent !== undefined) {
-    windows.push({ window: "secondary", usedPercent: secondaryPercent, raw: rateLimits.secondary! });
+  const secondary = rateLimits.secondary;
+  const secondaryPercent = asNumber(secondary?.used_percent);
+  if (secondary && secondaryPercent !== undefined) {
+    windows.push({ window: "secondary", usedPercent: secondaryPercent, raw: secondary });
   }
   // Older/flat schema: used_percent directly on rate_limits.
   if (windows.length === 0) {
@@ -95,14 +89,11 @@ const pad2 = (value: number): string => String(value).padStart(2, "0");
 // All failures (missing dirs, unreadable files, schema drift) resolve to
 // undefined — the keyword-based detection in failure-detection.ts still covers
 // those sessions. This function must never throw.
-export const readCodexUsage = async (
-  options: UsageProbeOptions = {}
-): Promise<UsageSnapshot | undefined> => {
-  const baseDir = options.baseDir ?? path.join(os.homedir(), ".codex");
-  const now = options.now?.() ?? new Date();
-  const maxDaysBack = options.maxDaysBack ?? 7;
+const readCodexUsage = async (): Promise<UsageSnapshot | undefined> => {
+  const baseDir = path.join(os.homedir(), ".codex");
+  const now = new Date();
 
-  for (let dayOffset = 0; dayOffset <= maxDaysBack; dayOffset += 1) {
+  for (let dayOffset = 0; dayOffset <= 7; dayOffset += 1) {
     const day = new Date(now.getTime() - dayOffset * 86_400_000);
     const dir = path.join(
       baseDir,
@@ -148,11 +139,10 @@ export const readCodexUsage = async (
 
 // Kind dispatcher — the extension point for future probes.
 export const readProviderUsage = async (
-  spec: UsageProbeSpec,
-  options: UsageProbeOptions = {}
+  spec: UsageProbeSpec
 ): Promise<UsageSnapshot | undefined> => {
   if (spec.kind === "codex-session-files") {
-    return readCodexUsage(options);
+    return readCodexUsage();
   }
   return undefined;
 };
@@ -189,11 +179,10 @@ export const resolveUsageProbe = (
 // Returns the snapshot only when usage is at/over the threshold; otherwise
 // (including every read failure) undefined.
 export const checkUsageThreshold = async (
-  resolved: ResolvedUsageProbe,
-  options: UsageProbeOptions = {}
+  resolved: ResolvedUsageProbe
 ): Promise<UsageSnapshot | undefined> => {
   try {
-    const snapshot = await readProviderUsage(resolved.spec, options);
+    const snapshot = await readProviderUsage(resolved.spec);
     return snapshot && snapshot.usedPercent >= resolved.thresholdPercent ? snapshot : undefined;
   } catch {
     return undefined;
@@ -204,7 +193,6 @@ export const checkUsageThreshold = async (
 // guard with their own settled flag). Returns a stop() that must run in cleanup.
 export const startUsageProbe = (
   resolved: ResolvedUsageProbe,
-  options: UsageProbeOptions | undefined,
   onTrigger: (snapshot: UsageSnapshot) => void,
   onSample?: (snapshot: UsageSnapshot) => void
 ): (() => void) => {
@@ -215,7 +203,7 @@ export const startUsageProbe = (
       return;
     }
     inFlight = true;
-    void readProviderUsage(resolved.spec, options)
+    void readProviderUsage(resolved.spec)
       .then((snapshot) => {
         if (snapshot && !stopped) {
           onSample?.(snapshot);
@@ -241,7 +229,6 @@ const describeWindow = (snapshot: UsageSnapshot): string => {
   return `${Math.max(1, Math.round(minutes / 60))}-hour`;
 };
 
-// One-line, chalk-free message; callers add color and trailing action text.
 export const formatUsageProbeMessage = (
   label: string,
   snapshot: UsageSnapshot,

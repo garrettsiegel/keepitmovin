@@ -56,7 +56,7 @@ export const withConfig =
  * Normalizes a subcommand's options.
  *
  * `--config` and `--cwd` are declared on the root program as well as on each
- * subcommand, so `kim --config x.json doctor` parses them onto the *parent*.
+ * subcommand, so `movin --config x.json doctor` parses them onto the *parent*.
  * `optsWithGlobals()` merges the parent's values in (the subcommand's own win),
  * which is what this used to approximate by re-scanning process.argv by hand --
  * a second parser that missed commander's concatenated short-option form

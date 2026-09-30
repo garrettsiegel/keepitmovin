@@ -26,7 +26,7 @@ import InstallCommand from "../../components/InstallCommand.astro";
   <pre><code>npx keepitmovin</code></pre>
 
   <h2>Verify</h2>
-  <pre><code>kim doctor</code></pre>
+  <pre><code>movin doctor</code></pre>
   <p>
     The doctor checks your config, which tools it can find on your
     <code>PATH</code>, and your git context. Add <code>--all</code> to see the
@@ -35,15 +35,15 @@ import InstallCommand from "../../components/InstallCommand.astro";
 
   <h2>Next step</h2>
   <p>
-    Run <code>kim</code> and follow the <a href="/docs/quickstart">quickstart</a>.
+    Run <code>movin</code> and follow the <a href="/docs/quickstart">quickstart</a>.
   </p>
 
   <h2>Optional: install read-only MCP continuity</h2>
-  <pre><code>kim mcp install --status
-kim mcp install</code></pre>
+  <pre><code>movin mcp install --status
+movin mcp install</code></pre>
   <p>
     The installer previews user-wide changes and asks before writing. It adds
     only a read-only keepitmovin server entry and can undo it with
-    <code>kim mcp install --remove</code>.
+    <code>movin mcp install --remove</code>.
   </p>
 </DocsLayout>

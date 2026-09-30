@@ -19,8 +19,8 @@ export {
  * Every tool keepitmovin knows about, in one list. This is pure data, so it is
  * exempt from the repo's 250-LOC file cap: splitting it only hid the fact that
  * *order here is behavior* — it drives the default fallback chain
- * (claude → codex → kimi → antigravity → opencode → grok → cursor → copilot →
- * ollama). Ollama stays last as the local, always-available final fallback.
+ * (claude → codex → kimi → antigravity → opencode → pi → grok → cursor → copilot →
+ * droid → amp → qwen → ollama). Ollama stays last as the local, always-available final fallback.
  */
 export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   {
@@ -196,6 +196,51 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
   },
 
   {
+    name: "pi",
+    label: "Pi",
+    group: "harness",
+    integrationType: "pty",
+    command: "pi",
+    versionArgs: ["--version"],
+    defaultEnabled: true,
+    controllable: true,
+    // `pi [messages...]` opens the interactive TUI with that first message;
+    // `-p`/`--print` is one-shot. `--` keeps a prompt that starts with "-" from
+    // parsing as a flag. Verified via `pi --help` (0.87) and earendil-works/pi.
+    args: ["--", "{{sessionPrompt}}"],
+    handoffArgs: ["--", "{{handoffPrompt}}"],
+    // Confirmed in earendil-works/pi source (open source). Every error renders as
+    // "Error: <msg>"; rate limits retry up to 3 times ("Retrying (1/3) in 2s…",
+    // which must not switch) and then "Error: Retry failed after 3 attempts: …",
+    // which generic detection already trusts. Account/subscription limits are
+    // never retried (pi-ai utils/retry.ts) — these are those, plus Pi's own
+    // ChatGPT-login banner. "billing"/"available balance" are too broad to use.
+    limitPatterns: [
+      "monthly usage limit reached",
+      "gousagelimiterror",
+      "freeusagelimiterror",
+      "insufficient_quota",
+      "out of budget",
+      "hit your chatgpt usage limit",
+      "subscription_sharing_usage_limit_exceeded",
+      "usage_limit_reached",
+      "monthly spend limit"
+    ],
+    updateCommands: [
+      {
+        label: "Update Pi",
+        command: "pi",
+        args: ["update", "self"]
+      }
+    ],
+    install: "Install with `npm install -g @earendil-works/pi-coding-agent` or `curl -fsSL https://pi.dev/install.sh | sh`, then verify with `pi --version`.",
+    auth: "Run `pi` then `/login` (Claude Pro/Max, ChatGPT, Copilot, Kimi, xAI subscriptions), or set a provider key such as `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`.",
+    homepage: "https://pi.dev/",
+    summary: "Minimal, extensible open-source coding agent that works with most model providers and subscription logins.",
+    limitation:
+      "keepitmovin passes the prompt positionally (`pi -- \"…\"`) so Pi stays interactive. Pi switches to one-shot print mode when it isn't attached to a terminal, so it needs node-pty — under the pipe fallback it would answer once and exit. Limit banners are curated from the open-source earendil-works/pi client, with generic detection as backstop. An unrelated npm package also installs a `pi` command; confirm `pi --version` prints a version number."
+  },
+  {
     name: "grok",
     label: "Grok Build",
     group: "harness",
@@ -325,6 +370,124 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
       "Requires an active GitHub Copilot subscription. keepitmovin starts interactive `copilot` and pastes the handoff as the first message (do not use `copilot -p`, which exits after one turn). Limit banners are curated from GitHub issue reports; generic detection remains as backstop."
   },
   {
+    name: "droid",
+    label: "Factory Droid",
+    group: "harness",
+    integrationType: "pty",
+    command: "droid",
+    versionArgs: ["--version"],
+    defaultEnabled: true,
+    controllable: true,
+    // `droid "query"` is interactive with an initial prompt; `droid exec` is
+    // headless. Verified from the CLI reference and the 0.229 binary's help text.
+    args: DEFAULT_SESSION_ARGS,
+    handoffArgs: DEFAULT_HANDOFF_ARGS,
+    // Closed source: strings taken from the shipped binary's English locale
+    // (@factory/cli 0.229.0), not yet seen in live output. Out of plan allowance,
+    // Droid opens a "⚠ Credit Limit Reached" picker and waits rather than exiting,
+    // so the banner is the only signal. Deliberately excluded: the "high-cost
+    // model" multiplier notice and "usage is at N%" — both are warnings.
+    limitPatterns: [
+      "credit limit reached",
+      "standard usage limit reached",
+      "upstream ai model provider is currently overloaded",
+      "this llm provider is currently overloaded"
+    ],
+    updateCommands: [
+      {
+        label: "Update Factory Droid",
+        command: "droid",
+        args: ["update"]
+      }
+    ],
+    install: "Install with `curl -fsSL https://app.factory.ai/cli | sh`, `brew install factory-ai/factory/droid`, or `npm install -g droid`.",
+    auth: "Run `droid` and sign in through the browser pairing code, or set `FACTORY_API_KEY`. Bring-your-own models go in `~/.factory/settings.json`.",
+    homepage: "https://factory.ai/",
+    summary: "Factory's terminal coding agent (Droid), with an interactive TUI and a Factory token allowance.",
+    limitation:
+      "keepitmovin passes the prompt positionally (`droid \"…\"`; never `droid exec`, which is headless). Droid is closed source: limit banners are taken from its shipped binary rather than observed output, with generic detection as backstop."
+  },
+  {
+    name: "amp",
+    label: "Amp",
+    group: "harness",
+    integrationType: "pty_with_bootstrap_input",
+    command: "amp",
+    versionArgs: ["--version"],
+    defaultEnabled: true,
+    controllable: true,
+    // Amp takes no interactive prompt argument (only piped stdin, which a PTY
+    // can't use; `-x/--execute` is one-shot), so start the TUI and paste the
+    // handoff pointer — same as Kimi and Copilot.
+    args: [],
+    handoffArgs: [],
+    bootstrapInput: DEFAULT_BOOTSTRAP,
+    handoffBootstrapInput: DEFAULT_HANDOFF_BOOTSTRAP,
+    // Closed source: from the shipped @ampcode/cli binary's bundled JS, not yet
+    // seen live. Limits open a dialog with a retry action; Amp never exits. The
+    // free tier refills hourly. Apostrophe-free anchors (server text may use
+    // U+2019). "Low Credit Balance" is deliberately excluded until it's confirmed
+    // to block rather than warn.
+    limitPatterns: [
+      "out of credits",
+      "reached your free usage limit",
+      "no usage available",
+      "is at its monthly limit, and no paid credits",
+      "usage quota exceeded",
+      "exceeded your usage quota"
+    ],
+    updateCommands: [
+      {
+        label: "Update Amp",
+        command: "amp",
+        args: ["update"]
+      }
+    ],
+    install: "Install with `curl -fsSL https://ampcode.com/install.sh | bash` or `npm i -g @ampcode/cli`, then verify with `amp --version`.",
+    auth: "Run `amp login`, or set `AMP_API_KEY`.",
+    homepage: "https://ampcode.com/",
+    summary: "Amp's terminal coding agent, with a free hourly allowance and paid credits.",
+    limitation:
+      "keepitmovin starts the interactive `amp` TUI and pastes the handoff as the first message (Amp has no interactive prompt argument; `-x` is one-shot). Limit banners come from Amp's shipped binary rather than observed output, with generic detection as backstop. Homebrew's `amp` formula is an unrelated text editor — install Amp with its own installer."
+  },
+  {
+    name: "qwen",
+    label: "Qwen Code",
+    group: "harness",
+    integrationType: "pty",
+    command: "qwen",
+    versionArgs: ["--version"],
+    defaultEnabled: true,
+    controllable: true,
+    // A bare positional prompt runs ONE-SHOT in Qwen Code; `-i` runs the prompt
+    // and stays interactive (packages/cli/src/config/config.ts, QwenLM/qwen-code).
+    args: ["-i", "{{sessionPrompt}}"],
+    handoffArgs: ["-i", "{{handoffPrompt}}"],
+    // Confirmed in QwenLM/qwen-code source (0.24.x). Errors render with a "✕"
+    // prefix and the CLI never exits on them. Plain 429s retry up to 10 times
+    // ("Retrying in N seconds…", not a switch) before these appear; quota and
+    // free-tier errors fail immediately.
+    limitPatterns: [
+      "quota exhausted:",
+      "qwen oauth free tier has been discontinued",
+      "free allocated quota exceeded",
+      "possible quota limitations in place"
+    ],
+    updateCommands: [
+      {
+        label: "Update Qwen Code",
+        command: "qwen",
+        args: ["update"]
+      }
+    ],
+    install: "Install with `npm install -g @qwen-code/qwen-code@latest` or `brew install qwen-code`.",
+    auth: "The free Qwen OAuth tier ended on 2026-04-15: run `/auth` to use Alibaba's Coding Plan, OpenRouter, or another provider, or set `OPENAI_API_KEY` / `OPENAI_BASE_URL` / `OPENAI_MODEL`.",
+    homepage: "https://github.com/QwenLM/qwen-code",
+    summary: "Alibaba's open-source terminal coding agent (a Gemini CLI fork) tuned for Qwen coding models.",
+    limitation:
+      "keepitmovin launches `qwen -i \"…\"` — a bare prompt argument would run once and exit. Limit banners are curated from the open-source QwenLM/qwen-code client, with generic detection as backstop. The prompt is briefly visible to local `ps` while it runs."
+  },
+  {
     name: "ollama",
     label: "Ollama",
     group: "harness",
@@ -345,6 +508,6 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     auth: "No login required — Ollama runs models entirely on your machine.",
     homepage: "https://ollama.com/",
     summary: "Local last resort: when every cloud tool is blocked, Ollama keeps a chat going offline (advice and planning, not file edits).",
-    limitation: "Ollama is a local chat model, not an autonomous coding agent — it answers and plans but won't edit files on its own, so keepitmovin keeps it last as an always-available fallback. Change the model name in `args`/`handoffArgs` (default: llama3.2) to a model you've pulled. A failed launch usually means the Ollama app isn't running (connection refused), not a rate limit."
+    limitation: "Ollama is a local chat model, not an autonomous coding agent — it answers and plans but won't edit files on its own, so keepitmovin keeps it last as an always-available fallback. It runs llama3.2, so pull that model first. A failed launch usually means the Ollama app isn't running (connection refused), not a rate limit."
   }
 ];

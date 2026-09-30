@@ -134,22 +134,10 @@ export const buildCompactionNudgeMessage = (handoffPath: string): string =>
   `keepitmovin detected that this tool compacted its context. Re-read ${handoffPath}, ` +
   "then revise Working State, Commands And Checks, Blockers, and Next Step before continuing.\n";
 
-/**
- * How long the narrative must sit stale, how quiet the tool must be, and how
- * much work must have happened before keepitmovin nudges. Fixed in
- * `HANDOFF_NUDGE`; overridable here so tests don't have to wait five minutes.
- */
-export interface NudgeTiming {
-  staleAfterMs: number;
-  idleForMs: number;
-  minTranscriptGrowthChars: number;
-}
-
 export interface HandoffWatcherContext {
   cwd: string;
   config: KeepitmovinConfig;
   handoffPath: string;
-  nudgeTiming?: NudgeTiming;
   transcriptLength: () => number; // RollingTranscript text().length
   lastActivityAt: () => number; // epoch ms of last child output OR user input
   isSettled: () => boolean;
@@ -174,7 +162,7 @@ export const startHandoffWatcher = (ctx: HandoffWatcherContext): (() => void) =>
   let lastNarrative: string | undefined;
   let narrativeChangedAt = Date.now();
 
-  const nudge = ctx.nudgeTiming ?? HANDOFF_NUDGE;
+  const nudge = HANDOFF_NUDGE;
 
   const maybeNudge = async (): Promise<void> => {
     let content: string;
@@ -200,7 +188,9 @@ export const startHandoffWatcher = (ctx: HandoffWatcherContext): (() => void) =>
     const grew = ctx.transcriptLength() - transcriptBaseline >= nudge.minTranscriptGrowthChars;
     const idle = now - ctx.lastActivityAt() >= nudge.idleForMs;
     const cooledDown = now - lastNudgeAt >= nudge.staleAfterMs;
-    if (!stale || !grew || !idle || !cooledDown) {
+    // The reads above awaited, so the session may have settled since the tick
+    // started; never nudge a child that is being killed.
+    if (!stale || !grew || !idle || !cooledDown || stopped || ctx.isSettled()) {
       return;
     }
 

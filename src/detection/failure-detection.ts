@@ -4,12 +4,12 @@ import {
   matchLimitPattern,
   matchProviderLimitPattern
 } from "./errors.js";
-import { DEFAULT_FALLBACK_ON } from "../config/config-schema.js";
+import { DEFAULT_FALLBACK_ON, type MANUAL_SWITCH_KEYS } from "../config/config-schema.js";
 import type { AgentErrorType, InteractiveProviderConfig, KeepitmovinConfig } from "../config/types.js";
 
 // Control sequences for the supported manual-switch keys. Values are the raw
 // bytes a terminal emits for each chord.
-const MANUAL_SWITCH_SEQUENCES: Record<string, string> = {
+const MANUAL_SWITCH_SEQUENCES: Record<(typeof MANUAL_SWITCH_KEYS)[number], string> = {
   "ctrl-]": "\x1d",
   "ctrl-\\": "\x1c",
   "ctrl-g": "\x07",
@@ -17,7 +17,11 @@ const MANUAL_SWITCH_SEQUENCES: Record<string, string> = {
 };
 
 export const getManualSwitchSequence = (config: KeepitmovinConfig): string =>
-  MANUAL_SWITCH_SEQUENCES[config.harness.manualSwitchKey.toLowerCase()] ?? "\x1d";
+  MANUAL_SWITCH_SEQUENCES[config.harness.manualSwitchKey];
+
+/** "ctrl-]" → "Ctrl+]", for on-screen hints. */
+export const formatManualSwitchKey = (config: KeepitmovinConfig): string =>
+  config.harness.manualSwitchKey.replace(/^ctrl-(.)$/, (_, key: string) => `Ctrl+${key.toUpperCase()}`);
 
 // Prefixes that mark a line as a tool/status/error line rather than the agent's
 // prose. A limit pattern is only trusted live when it heads its line or the line
@@ -41,6 +45,8 @@ const ERROR_LINE_INDICATORS = [
   "warning:",
   "✗",
   "✘",
+  // Qwen Code prefixes every error line with U+2715.
+  "✕",
   "×",
   "⚠",
   "⛔",
@@ -99,20 +105,33 @@ const hasAdjacentStatusWord = (line: string, pattern: string): boolean => {
   return tokenize(line.slice(0, index)).slice(-STATUS_WORDS_BEFORE).some(isStatusWord);
 };
 
-// PTY output carries CRLF line endings while the prompts keepitmovin injects use
-// LF, so a naive replaceAll would never strip them and the tool's own launch
-// prompt would stay in the scanned text. Since that prompt embeds the error type
-// verbatim (and "rate_limit" is itself a pattern), an echoing tool could
-// self-trigger an immediate re-switch. Normalize both sides before removing.
+// The prompts keepitmovin injects embed the error type verbatim ("rate_limit" is
+// itself a pattern), so a tool that echoes its prompt could self-trigger an
+// immediate re-switch unless the echo is stripped. An exact match isn't enough:
+// PTY output carries CRLF where the prompt has LF, and a TUI re-wraps a pasted
+// prompt at terminal width. So the prompt matches with any run of whitespace
+// (including line breaks) between its words.
 const normalizeLineEndings = (text: string): string => text.replaceAll("\r\n", "\n").replaceAll("\r", "\n");
+
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const wrapTolerantPattern = (value: string): RegExp | undefined => {
+  const words = value.split(/\s+/).filter(Boolean);
+  return words.length > 0 ? new RegExp(words.map(escapeRegExp).join("\\s+"), "g") : undefined;
+};
 
 const stripIgnored = (text: string, ignore: Array<string | undefined>): string =>
   ignore
-    .filter((value): value is string => Boolean(value))
-    .reduce(
-      (accumulated, value) => accumulated.replaceAll(normalizeLineEndings(value), ""),
-      normalizeLineEndings(text)
-    );
+    .map((value) => (value ? wrapTolerantPattern(value) : undefined))
+    .filter((pattern): pattern is RegExp => Boolean(pattern))
+    .reduce((accumulated, pattern) => accumulated.replace(pattern, ""), normalizeLineEndings(text));
+
+// TUI dialogs (Amp's "Out of Credits", Droid's "Credit Limit Reached") draw their
+// text inside box borders, so a banner never literally heads its line. Strip the
+// box-drawing side borders first. The ASCII "|" is deliberately not stripped:
+// agents print Markdown tables, and a cell must not pass as a status line.
+const stripBoxBorders = (line: string): string =>
+  line.replace(/^[│┃║]\s*/, "").replace(/\s*[│┃║]$/, "");
 
 // True when `line` contains `pattern` in a way that reads like a status/error
 // line — either the line leads with the pattern itself, or with a known error
@@ -128,7 +147,7 @@ const isStatusLikeLine = (
   pattern: string,
   options: { strict?: boolean } = {}
 ): boolean => {
-  const trimmed = line.trim().toLowerCase();
+  const trimmed = stripBoxBorders(line.trim()).toLowerCase();
 
   if (!trimmed.includes(pattern)) {
     return false;
@@ -169,7 +188,6 @@ const isStatusLikeLine = (
 export const detectLiveFailure = (
   tail: string,
   provider: InteractiveProviderConfig,
-  config: KeepitmovinConfig,
   ignore: Array<string | undefined>
 ): AgentErrorType | undefined => {
   const cleaned = stripIgnored(tail, ignore);
@@ -212,14 +230,20 @@ export const detectLiveFailure = (
 };
 
 // Post-exit detection. A non-zero exit is already a strong failure signal, so
-// this uses the broader classifier on the stripped tail.
+// the whole transcript is checked with the live (status-line) guard, and the
+// broader substring classifier runs only on the tail. Running the substring
+// classifier over everything turned prose from early in the session ("the rate
+// limit handler…") plus any failing exit into a bogus `rate_limit`.
 export const detectExitFailure = (
+  text: string,
   tail: string,
   provider: InteractiveProviderConfig,
-  config: KeepitmovinConfig,
   exitCode: number | null,
   ignore: Array<string | undefined>
 ): AgentErrorType | undefined => {
+  const live = detectLiveFailure(text, provider, ignore);
+  if (live) return live;
+
   const detected = classifyError(stripIgnored(tail, ignore), "", exitCode ?? 1);
   const fallbackOn = provider.fallbackOn ?? DEFAULT_FALLBACK_ON;
 

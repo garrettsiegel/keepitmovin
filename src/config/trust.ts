@@ -176,7 +176,7 @@ export const assertConfigTrusted = async (
     throw new UntrustedConfigError(
       `${options.configPath} defines custom tool commands that keepitmovin will not run without your consent:\n` +
         `${commandList}\n` +
-        "Run `kim` in an interactive terminal once to review and trust them."
+        "Run `movin` in an interactive terminal once to review and trust them."
     );
   }
 

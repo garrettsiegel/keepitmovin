@@ -3,12 +3,35 @@
 </div>
 
 <script>
-  import {
-    DEFAULT_HERO_FLOW_SETTINGS,
-    normalizeHeroFlowSettings,
-    type HeroFlowSettings,
-  } from "../lib/hero-flow-settings";
+  type Cell = {
+    x: number;
+    y: number;
+    column: number;
+    row: number;
+    seed: number;
+  };
 
+  const settings = {
+    cellSpacing: 16,
+    maxCells: 4500,
+    frameRate: 60,
+    speed: 1.4,
+    ribbonWidth: 1.65,
+    ribbonAmplitude: 1.4,
+    detail: 0.95,
+    visibilityThreshold: 0.2,
+    opacity: 0.2,
+    baseGlyphSize: 7,
+    glyphSizeRange: 5.5,
+    accentThreshold: 0.76,
+    accentEvery: 2,
+    vignetteStrength: 1,
+  };
+  const glyphRamp = ["·", "·", ":", "+", "/", "›", "»"];
+  const seeded = (index: number, salt: number) => {
+    const value = Math.sin(index * 91.17 + salt * 43.71) * 43758.5453;
+    return value - Math.floor(value);
+  };
   const canvases = document.querySelectorAll<HTMLCanvasElement>("[data-hero-flow]");
 
   canvases.forEach((canvas) => {
@@ -17,7 +40,6 @@
     const root = canvas.closest<HTMLElement>("[data-hero-flow-root]");
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const glyphRamp = ["·", "·", ":", "+", "/", "›", "»"];
     let width = 1;
     let height = 1;
     let frame = 0;
@@ -27,20 +49,6 @@
     let textColor = "#f3efe6";
     let accentColor = "#ff5a1f";
     let cells: Cell[] = [];
-    let settings = { ...DEFAULT_HERO_FLOW_SETTINGS };
-
-    type Cell = {
-      x: number;
-      y: number;
-      column: number;
-      row: number;
-      seed: number;
-    };
-
-    const seeded = (index: number, salt: number) => {
-      const value = Math.sin(index * 91.17 + salt * 43.71) * 43758.5453;
-      return value - Math.floor(value);
-    };
 
     const makeGrid = () => {
       let spacing = settings.cellSpacing;
@@ -193,24 +201,9 @@
       readColors();
       start();
     };
-    const onSettingsChange = (event: Event) => {
-      const detail = (event as CustomEvent<Partial<HeroFlowSettings>>).detail;
-      const nextSettings = normalizeHeroFlowSettings(detail ?? {});
-      const gridChanged =
-        settings.cellSpacing !== nextSettings.cellSpacing ||
-        settings.maxCells !== nextSettings.maxCells;
-      settings = nextSettings;
-      root?.style.setProperty(
-        "--hero-flow-vignette",
-        `${settings.vignetteStrength * 100}%`,
-      );
-      if (gridChanged) makeGrid();
-      start();
-    };
     const colorScheme = window.matchMedia("(prefers-color-scheme: light)");
     reducedMotion.addEventListener("change", onMotionChange);
     colorScheme.addEventListener("change", onColorChange);
-    window.addEventListener("keepitmovin:hero-flow-settings", onSettingsChange);
     root?.style.setProperty(
       "--hero-flow-vignette",
       `${settings.vignetteStrength * 100}%`,
