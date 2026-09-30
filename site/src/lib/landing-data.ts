@@ -1,18 +1,18 @@
 export const handoffSteps = [
   {
-    label: "Limit hit",
+    label: "01",
     title: "A tool hits its limit",
-    body: "keepitmovin watches the terminal and recognizes the exact limit message the moment it appears.",
+    body: "keepitmovin spots the exact limit message the moment it appears.",
   },
   {
-    label: "Context packed",
+    label: "02",
     title: "Your context is packed",
-    body: "The handoff file carries your goal, decisions, and recent changes — refreshed as the tool works.",
+    body: "Your goal, decisions, and recent changes — kept current as you work.",
   },
   {
-    label: "Next tool resumes",
-    title: "The next tool resumes",
-    body: "It launches with the handoff loaded and picks up where you stopped. You keep typing.",
+    label: "03",
+    title: "The next tool takes over",
+    body: "It launches with the handoff loaded and picks up where you stopped.",
   },
 ];
 
@@ -23,18 +23,13 @@ export const comparisonRows = [
     raw: "You copy-paste what you remember into a new session.",
   },
   {
-    label: "Context carried over",
-    kim: "The handoff file is refreshed as your tools work.",
-    raw: "Nothing — the new tool starts blank.",
-  },
-  {
     label: "Watching for failures",
     kim: "Limits, auth errors, and crashes are detected for you.",
     raw: "You watch the terminal yourself.",
   },
   {
     label: "Multi-tool setup",
-    kim: "One setup wizard, zero config to start.",
+    kim: "One setup question, zero config.",
     raw: "Juggle every CLI's flags and logins by hand.",
   },
 ];

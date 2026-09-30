@@ -9,7 +9,7 @@ import { iconBox, supportedTools } from "../lib/supported-tools";
 
 const title = "keepitmovin — Agents hit limits. Your work doesn't.";
 const description =
-  "keepitmovin runs your coding agents in one terminal, watches for rate limits, and hands the next tool a structured record of the work.";
+  "When one coding agent hits its limit, the next one picks up where it left off. Open source, local, zero config.";
 ---
 
 <BaseLayout title={title} description={description}>
@@ -20,83 +20,16 @@ const description =
       <p class="hero-badge">Open source · MIT · one terminal</p>
       <h1>Agents hit limits. Your work doesn't.</h1>
       <p class="subline">
-        keepitmovin runs your coding agents in one terminal, watches for rate
-        limits, and hands the next tool a structured record of the goal,
-        changes, blockers, and next step.
+        When one coding agent hits its limit, the next one picks up where it
+        left off.
       </p>
       <div class="hero-actions">
         <InstallCommand command="npm install -g keepitmovin" />
       </div>
       <p class="hero-note">
-        Then run <code>movin</code>. A first-run wizard detects your installed
-        tools and you pick a fallback order. Zero config to start.
+        Then run <code>movin</code>. It finds your tools; you pick the order.
       </p>
       <HandoffMeter />
-    </div>
-  </section>
-
-  <!-- Trust -->
-  <section class="section" id="trust">
-    <div class="container">
-      <div class="section-head">
-        <p class="eyebrow">Local by design</p>
-        <h2>Your continuity stays with your project.</h2>
-        <p class="lede">
-          keepitmovin does not upload handoffs or session logs. Your coding
-          tools still connect to their own providers under their own terms.
-        </p>
-      </div>
-      <div class="trust-grid">
-        <article class="trust-card">
-          <h3>Local session data</h3>
-          <p>Handoffs and summaries live under <code>.keepitmovin/</code>, which gets its own gitignore.</p>
-        </article>
-        <article class="trust-card">
-          <h3>No extra model call by default</h3>
-          <p>The active tool maintains the handoff during normal work. Opt-in Jev routing sends only sanitized task text to TypeSafe.</p>
-        </article>
-        <article class="trust-card">
-          <h3>Defensive redaction</h3>
-          <p>Common credential formats are redacted before persistence. Treat local artifacts as sensitive anyway.</p>
-        </article>
-        <article class="trust-card">
-          <h3>Open source</h3>
-          <p>The CLI is MIT licensed. Read the code, audit the behavior, and keep using it for free.</p>
-        </article>
-      </div>
-    </div>
-  </section>
-
-  <!-- FAQ -->
-  <section class="section" id="faq">
-    <div class="container narrow-section">
-      <div class="section-head">
-        <p class="eyebrow">Before you ask</p>
-        <h2>Practical continuity, not a cloned chat.</h2>
-      </div>
-      <div class="faq-list">
-        <details class="faq-item">
-          <summary>Does it transfer the private chat session?</summary>
-          <p>No. The next tool starts fresh and reads a live handoff containing the goal, decisions, changes, checks, blockers, and next action.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Is the handoff just another stale context file?</summary>
-          <p>No. The working agent is prompted to revise it after each subtask, while keepitmovin refreshes repository state and recent changes during the session.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Does keepitmovin send my data anywhere?</summary>
-          <p>keepitmovin itself does not upload handoffs or logs. The agents it launches still communicate with their own providers.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Can I switch before a limit is hit?</summary>
-          <p>Yes. Press <kbd>Ctrl+]</kbd> to pack the current context and move to the next tool whenever you choose.</p>
-        </details>
-        <details class="faq-item">
-          <summary>Does it commit or push code?</summary>
-          <p>Never. keepitmovin watches, records local continuity, and switches tools. The launched tools retain their own permissions and behavior.</p>
-        </details>
-      </div>
-      <p class="section-link"><a href="/docs/faq">Read the full FAQ →</a></p>
     </div>
   </section>
 
@@ -106,13 +39,8 @@ const description =
   <section class="section">
     <div class="container">
       <div class="section-head">
-        <p class="eyebrow">The handoff</p>
-        <h2>The handoff is automatic.</h2>
-        <p class="lede">
-          When a tool hits its usage limit, keepitmovin detects the exact
-          limit message and starts your next tool. No copy-pasting context,
-          no lost thread, no "where was I".
-        </p>
+        <p class="eyebrow">How it works</p>
+        <h2>Limit hit. Next tool. Keep typing.</h2>
       </div>
       <ol class="steps">
         {
@@ -125,11 +53,6 @@ const description =
           ))
         }
       </ol>
-      <p class="aside">
-        Switch on your own schedule: press <kbd>Ctrl+]</kbd> to hand off to
-        the next tool anytime. Everything keepitmovin writes lives in
-        <code>.keepitmovin/</code> in your project.
-      </p>
     </div>
   </section>
 
@@ -141,7 +64,7 @@ const description =
         <h2>One long session, not five short ones.</h2>
         <p class="lede">
           You already pay for these tools. keepitmovin chains their limits
-          into one continuous working session.
+          into one continuous session.
         </p>
       </div>
       <div class="vs">
@@ -182,9 +105,8 @@ const description =
         <p class="eyebrow">Supported tools</p>
         <h2>Works with the tools you already use.</h2>
         <p class="lede">
-          Thirteen tools supported today. keepitmovin detects what's installed;
-          you pick the fallback order. Ollama sits last — a local fallback
-          for advice and planning when every cloud tool is blocked.
+          Thirteen tools today. Ollama runs last, locally, for when every cloud
+          tool is blocked.
         </p>
       </div>
       <div class="tools-grid">
@@ -210,17 +132,71 @@ const description =
     </div>
   </section>
 
-  <!-- Honest limitation -->
+  <!-- Trust -->
+  <section class="section" id="trust">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Local by design</p>
+        <h2>Your work stays in your project.</h2>
+        <p class="lede">
+          keepitmovin uploads nothing. Your tools still talk to their own
+          providers, as they always did.
+        </p>
+      </div>
+      <div class="trust-grid">
+        <article class="trust-card">
+          <h3>Local files</h3>
+          <p>Handoffs and logs live in <code>.keepitmovin/</code>, gitignored automatically.</p>
+        </article>
+        <article class="trust-card">
+          <h3>No extra model calls</h3>
+          <p>The tool you're already running keeps the handoff up to date.</p>
+        </article>
+        <article class="trust-card">
+          <h3>Secrets redacted</h3>
+          <p>Common credential formats are stripped before anything is written.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" id="faq">
+    <div class="container narrow-section">
+      <div class="section-head">
+        <p class="eyebrow">Before you ask</p>
+        <h2>Questions</h2>
+      </div>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>Does the next tool get my chat history?</summary>
+          <p>No — no agent can transfer that today. It starts fresh with the handoff: your goal, decisions, recent changes, and next step.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Won't the handoff go stale?</summary>
+          <p>No. The working agent updates it after each subtask, and keepitmovin refreshes repo state as you go.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Can I switch before a limit is hit?</summary>
+          <p>Yes. Press <kbd>Ctrl+]</kbd> anytime.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does it commit or push code?</summary>
+          <p>Never. It watches, records, and switches.</p>
+        </details>
+      </div>
+      <p class="section-link"><a href="/docs/faq">Read the full FAQ →</a></p>
+    </div>
+  </section>
+
+  <!-- Closing CTA -->
   <section class="section">
     <div class="container">
-      <div class="pull">
-        <p class="eyebrow">The trade, stated plainly</p>
-        <p>When keepitmovin switches tools, the new tool starts a fresh session.</p>
-        <p class="pull-sub">
-          It gets the handoff file — your goal, decisions, and recent
-          changes — not the previous tool's private chat history. No coding
-          agent can transfer that today. That's the trade, stated plainly.
-        </p>
+      <div class="section-head center">
+        <h2>Keep it movin'.</h2>
+      </div>
+      <div class="hero-actions">
+        <InstallCommand command="npm install -g keepitmovin" />
       </div>
     </div>
   </section>

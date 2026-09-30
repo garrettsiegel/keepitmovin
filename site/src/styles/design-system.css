@@ -300,6 +300,7 @@ div[id] {
   margin: 1.5rem auto 0;
   font-size: clamp(1.05rem, 2vw, 1.2rem);
   color: var(--text-dim);
+  text-wrap: balance;
 }
 
 .hero-actions {
@@ -313,6 +314,7 @@ div[id] {
   max-width: 34rem;
   font-size: 0.92rem;
   color: var(--text-dim);
+  text-wrap: balance;
 }
 
 .hero-note code {
@@ -539,10 +541,12 @@ div[id] {
   font-weight: 700;
   line-height: 1.12;
   letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 
 .section .lede {
   margin: 1rem 0 0;
+  text-wrap: pretty;
   font-size: 1.08rem;
   color: var(--text-dim);
 }
@@ -752,7 +756,7 @@ div[id] {
 
 .trust-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 
