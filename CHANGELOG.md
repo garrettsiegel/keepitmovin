@@ -6,6 +6,8 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 ## [Unreleased]
 
+## [4.1.0] — 2026-09-29
+
 ### Added
 
 - Optional Jev task routing via `routing.classifier: "jev"`. Sanitized task text is sent to
@@ -34,7 +36,7 @@ All notable changes to keepitmovin are documented here. The format is based on
   `movin mcp`, so every other command starts faster.
 - CI runs smoke checks on the built CLI (`--version`, `doctor` against the example config, an MCP
   handshake, `npm pack`), adds Node 26, and adds a macOS leg.
-- The website no longer has a pricing section.
+- The website no longer has a pricing section, and the homepage copy is about half as long.
 - New homepage hero and README GIF: Claude Code's usage meter fills, the handoff card carries the
   task to Codex, and the task bar never resets. Both come from one scene
   (`site/src/components/HandoffMeter.astro`); `demo/render-hero-gif.mjs` renders the GIF from it,
@@ -384,7 +386,8 @@ All notable changes to keepitmovin are documented here. The format is based on
 
 - Removed the non-interactive task mode; keepitmovin is the interactive session harness only.
 
-[Unreleased]: https://github.com/garrettsiegel/keepitmovin/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/garrettsiegel/keepitmovin/compare/v4.1.0...HEAD
+[4.1.0]: https://github.com/garrettsiegel/keepitmovin/compare/v4.0.0...v4.1.0
 [4.0.0]: https://github.com/garrettsiegel/keepitmovin/compare/v3.0.0...v4.0.0
 [3.0.0]: https://github.com/garrettsiegel/keepitmovin/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/garrettsiegel/keepitmovin/compare/v2.0.1...v2.1.0
