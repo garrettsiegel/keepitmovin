@@ -194,7 +194,7 @@ const description =
               <span class="tool-name">
                 {tool.icon ? (
                   <svg viewBox={iconBox(tool, 18).viewBox} aria-hidden="true" width={iconBox(tool, 18).width} height="18" fill="currentColor">
-                    <path d={tool.icon} />
+                    <path d={tool.icon} fill-rule={tool.iconEvenOdd ? "evenodd" : undefined} />
                   </svg>
                 ) : (
                   <span class="ticker-mono">{tool.mono}</span>

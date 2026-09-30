@@ -14,7 +14,7 @@ import { iconBox, supportedTools } from "../lib/supported-tools";
                 <li class="works-item">
                   {tool.icon ? (
                     <svg viewBox={iconBox(tool, 16).viewBox} aria-hidden="true" style={`width: ${iconBox(tool, 16).width}px`}>
-                      <path d={tool.icon} />
+                      <path d={tool.icon} fill-rule={tool.iconEvenOdd ? "evenodd" : undefined} />
                     </svg>
                   ) : (
                     <span class="ticker-mono" aria-hidden="true">{tool.mono}</span>

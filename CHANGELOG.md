@@ -50,7 +50,10 @@ All notable changes to keepitmovin are documented here. The format is based on
 - OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
 - `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
   Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
-- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+- The website shows each tool's own product mark: new logos for Pi, Factory Droid, Amp, Qwen
+  Code, Kimi CLI, opencode, and Cursor (previously letter tiles), and product marks instead of
+  parent-company logos for Claude Code (not Anthropic's), Grok Build (not X's), Google Antigravity
+  (not Google's "G"), and GitHub Copilot CLI (not the Octocat).
 
 ### Fixed
 
@@ -145,7 +148,10 @@ All notable changes to keepitmovin are documented here. The format is based on
 - OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
 - `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
   Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
-- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+- The website shows each tool's own product mark: new logos for Pi, Factory Droid, Amp, Qwen
+  Code, Kimi CLI, opencode, and Cursor (previously letter tiles), and product marks instead of
+  parent-company logos for Claude Code (not Anthropic's), Grok Build (not X's), Google Antigravity
+  (not Google's "G"), and GitHub Copilot CLI (not the Octocat).
 
 ### Fixed
 
@@ -214,7 +220,10 @@ All notable changes to keepitmovin are documented here. The format is based on
 - OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
 - `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
   Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
-- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+- The website shows each tool's own product mark: new logos for Pi, Factory Droid, Amp, Qwen
+  Code, Kimi CLI, opencode, and Cursor (previously letter tiles), and product marks instead of
+  parent-company logos for Claude Code (not Anthropic's), Grok Build (not X's), Google Antigravity
+  (not Google's "G"), and GitHub Copilot CLI (not the Octocat).
 
 ### Fixed
 
@@ -273,7 +282,10 @@ All notable changes to keepitmovin are documented here. The format is based on
 - OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
 - `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
   Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
-- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+- The website shows each tool's own product mark: new logos for Pi, Factory Droid, Amp, Qwen
+  Code, Kimi CLI, opencode, and Cursor (previously letter tiles), and product marks instead of
+  parent-company logos for Claude Code (not Anthropic's), Grok Build (not X's), Google Antigravity
+  (not Google's "G"), and GitHub Copilot CLI (not the Octocat).
 
 ### Fixed
 
@@ -312,7 +324,10 @@ All notable changes to keepitmovin are documented here. The format is based on
 - OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
 - `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
   Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
-- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+- The website shows each tool's own product mark: new logos for Pi, Factory Droid, Amp, Qwen
+  Code, Kimi CLI, opencode, and Cursor (previously letter tiles), and product marks instead of
+  parent-company logos for Claude Code (not Anthropic's), Grok Build (not X's), Google Antigravity
+  (not Google's "G"), and GitHub Copilot CLI (not the Octocat).
 
 ### Fixed
 
@@ -344,7 +359,10 @@ All notable changes to keepitmovin are documented here. The format is based on
 - OpenAI's `insufficient_quota` error code is now recognized as a quota failure for every tool.
 - `movin mcp install` sets up Pi (`~/.pi/agent/mcp.json`), Factory Droid (`~/.factory/mcp.json`),
   Amp (`amp.mcpServers` in `~/.config/amp/settings.json`), and Qwen Code (`~/.qwen/settings.json`).
-- The website shows official logos for Pi, Factory Droid, Amp, and Qwen Code.
+- The website shows each tool's own product mark: new logos for Pi, Factory Droid, Amp, Qwen
+  Code, Kimi CLI, opencode, and Cursor (previously letter tiles), and product marks instead of
+  parent-company logos for Claude Code (not Anthropic's), Grok Build (not X's), Google Antigravity
+  (not Google's "G"), and GitHub Copilot CLI (not the Octocat).
 
 ### Fixed
 
