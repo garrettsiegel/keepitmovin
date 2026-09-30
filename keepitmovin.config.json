@@ -1,0 +1,321 @@
+{
+  "updates": {
+    "checkOnStart": false,
+    "mode": "prompt",
+    "includeDisabledProviders": false
+  },
+  "routing": {
+    "enabled": false,
+    "classifier": "local"
+  },
+  "harness": {
+    "setupComplete": true,
+    "providerOrder": [
+      "pi",
+      "claude",
+      "codex"
+    ],
+    "manualSwitchKey": "ctrl-]",
+    "idleTimeoutMs": 0,
+    "usageProbe": {
+      "enabled": true,
+      "thresholdPercent": 95,
+      "pollIntervalMs": 30000
+    },
+    "handoffRefresh": {
+      "enabled": true,
+      "intervalMs": 60000
+    },
+    "watchdog": {
+      "enabled": true
+    },
+    "providers": [
+      {
+        "name": "claude",
+        "label": "Claude Code",
+        "enabled": true,
+        "command": "claude",
+        "args": [
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "5-hour limit reached",
+          "upgrade to increase your usage limit",
+          "you've reached your usage limit",
+          "selected model is at capacity"
+        ],
+        "compactionProbe": {
+          "kind": "claude-transcript"
+        }
+      },
+      {
+        "name": "codex",
+        "label": "Codex",
+        "enabled": true,
+        "command": "codex",
+        "args": [
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "you've hit your usage limit",
+          "you have hit your usage limit",
+          "reached your usage limit"
+        ],
+        "usageProbe": {
+          "kind": "codex-session-files"
+        },
+        "compactionProbe": {
+          "kind": "codex-session-files"
+        }
+      },
+      {
+        "name": "kimi",
+        "label": "Kimi CLI",
+        "enabled": false,
+        "command": "kimi",
+        "args": [],
+        "handoffArgs": [],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "Read the keepitmovin handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        "handoffBootstrapInput": "Read the keepitmovin handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n",
+        "controllable": true,
+        "limitPatterns": [
+          "[provider.rate_limit]",
+          "membership expired, please renew your plan",
+          "rate_limit_reached_error",
+          "exceeded_current_quota_error",
+          "engine_overloaded_error",
+          "request reached organization",
+          "is suspended due to insufficient balance",
+          "reached your usage limit for this billing cycle"
+        ]
+      },
+      {
+        "name": "antigravity",
+        "label": "Google Antigravity",
+        "enabled": false,
+        "command": "agy",
+        "args": [
+          "--prompt-interactive",
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "--prompt-interactive",
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "individual quota reached",
+          "the model api is currently overloaded",
+          "our servers are experiencing high traffic right now"
+        ]
+      },
+      {
+        "name": "opencode",
+        "label": "opencode",
+        "enabled": false,
+        "command": "opencode",
+        "args": [
+          "{{cwd}}",
+          "--prompt",
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "{{cwd}}",
+          "--prompt",
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "provider is overloaded",
+          "free usage exceeded, subscribe to go",
+          "usage limit reached",
+          "subscription quota exceeded",
+          "gemini is way too hot right now"
+        ]
+      },
+      {
+        "name": "pi",
+        "label": "Pi",
+        "enabled": true,
+        "command": "pi",
+        "args": [
+          "--",
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "--",
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "monthly usage limit reached",
+          "gousagelimiterror",
+          "freeusagelimiterror",
+          "insufficient_quota",
+          "out of budget",
+          "hit your chatgpt usage limit",
+          "subscription_sharing_usage_limit_exceeded",
+          "usage_limit_reached",
+          "monthly spend limit"
+        ]
+      },
+      {
+        "name": "grok",
+        "label": "Grok Build",
+        "enabled": false,
+        "command": "grok",
+        "args": [
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "hit the rate limit for your plan",
+          "reached your free grok build usage limit",
+          "free-usage-exhausted",
+          "you hit your free usage limit",
+          "you hit your weekly limit",
+          "usage balance exhausted",
+          "out of credits",
+          "spending cap"
+        ]
+      },
+      {
+        "name": "cursor",
+        "label": "Cursor Agent",
+        "enabled": false,
+        "command": "agent",
+        "args": [
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "you've hit your usage limit",
+          "your usage limits will reset when your monthly cycle ends",
+          "you've hit your free requests limit",
+          "we're experiencing high demand"
+        ]
+      },
+      {
+        "name": "copilot",
+        "label": "GitHub Copilot CLI",
+        "enabled": false,
+        "command": "copilot",
+        "args": [],
+        "handoffArgs": [],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "Read the keepitmovin handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        "handoffBootstrapInput": "Read the keepitmovin handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n",
+        "controllable": true,
+        "limitPatterns": [
+          "hit a rate limit that restricts the number of copilot model requests",
+          "reached your weekly rate limit",
+          "exceeded your copilot token usage",
+          "you have no quota",
+          "quota_exceeded"
+        ]
+      },
+      {
+        "name": "droid",
+        "label": "Factory Droid",
+        "enabled": false,
+        "command": "droid",
+        "args": [
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "credit limit reached",
+          "standard usage limit reached",
+          "upstream ai model provider is currently overloaded",
+          "this llm provider is currently overloaded"
+        ]
+      },
+      {
+        "name": "amp",
+        "label": "Amp",
+        "enabled": false,
+        "command": "amp",
+        "args": [],
+        "handoffArgs": [],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "Read the keepitmovin handoff at {{handoffPath}} and continue the session (keep that file updated as you work).\n",
+        "handoffBootstrapInput": "Read the keepitmovin handoff at {{handoffPath}} first, then continue from where the previous tool left off.\n",
+        "controllable": true,
+        "limitPatterns": [
+          "out of credits",
+          "reached your free usage limit",
+          "no usage available",
+          "is at its monthly limit, and no paid credits",
+          "usage quota exceeded",
+          "exceeded your usage quota"
+        ]
+      },
+      {
+        "name": "qwen",
+        "label": "Qwen Code",
+        "enabled": false,
+        "command": "qwen",
+        "args": [
+          "-i",
+          "{{sessionPrompt}}"
+        ],
+        "handoffArgs": [
+          "-i",
+          "{{handoffPrompt}}"
+        ],
+        "integrationType": "pty",
+        "controllable": true,
+        "limitPatterns": [
+          "quota exhausted:",
+          "qwen oauth free tier has been discontinued",
+          "free allocated quota exceeded",
+          "possible quota limitations in place"
+        ]
+      },
+      {
+        "name": "ollama",
+        "label": "Ollama",
+        "enabled": false,
+        "command": "ollama",
+        "args": [
+          "run",
+          "llama3.2"
+        ],
+        "handoffArgs": [
+          "run",
+          "llama3.2"
+        ],
+        "integrationType": "pty_with_bootstrap_input",
+        "bootstrapInput": "{{sessionPrompt}}\n",
+        "handoffBootstrapInput": "{{handoffPrompt}}\n",
+        "controllable": true
+      }
+    ]
+  }
+}
